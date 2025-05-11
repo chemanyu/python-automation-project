@@ -1,1 +1,3 @@
-Tkinter
+Flask
+selenium
+requests

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Deeplink提取结果</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #d9534f; } /* 主题色 */
+        .error { color: red; font-weight: bold; margin-bottom: 15px; padding: 10px; background-color: #fdd; border: 1px solid red; border-radius: 4px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; word-break: break-all; }
+        th { background-color: #f0f0f0; }
+        .status-成功 { color: green; }
+        .status-失败 { color: orange; }
+        .status-错误 { color: red; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Deeplink提取结果</h1>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        {% if results %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>原始短链接</th>
+                        <th>提取结果 (Deeplink)</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in results %}
+                    <tr>
+                        <td>{{ item.original }}</td>
+                        <td>{{ item.deeplink }}</td>
+                        <td class="status-{{ item.status }}">{{ item.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif not error %}
+             <p>没有结果可以显示。</p>
+        {% endif %}
+        <br>
+        <a href="{{ url_for('index') }}">返回主页</a>
+    </div>
+</body>
+</html>

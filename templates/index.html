@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>淘宝Deeplink提取服务</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #d9534f; } /* 主题色 */
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="text"], input[type="file"] {
+            width: calc(100% - 22px); padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;
+        }
+        button {
+            background-color: #d9534f; color: white; padding: 10px 15px; border: none;
+            border-radius: 4px; cursor: pointer; font-size: 16px; margin-right: 10px;
+        }
+        button:hover { background-color: #c9302c; }
+        .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .section:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>淘宝Deeplink提取服务</h1>
+
+        <div class="section">
+            <h2>单个链接提取</h2>
+            <form action="{{ url_for('extract_single_link') }}" method="post">
+                <label for="short_url">输入淘宝短链接:</label>
+                <input type="text" id="short_url" name="short_url" required>
+                <button type="submit">提取Deeplink</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>批量链接提取 (通过文件上传)</h2>
+            <p>请上传一个文本文件 (.txt)，每行包含一个淘宝短链接。</p>
+            <form action="{{ url_for('upload_and_extract_file') }}" method="post" enctype="multipart/form-data">
+                <label for="link_file">选择文件:</label>
+                <input type="file" id="link_file" name="link_file" accept=".txt" required>
+                <button type="submit">上传并提取</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
