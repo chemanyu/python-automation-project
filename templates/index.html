@@ -35,10 +35,56 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* 添加模态框样式 */
+        .modal {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+
+            /* 修复模态框内容超出边界的问题 */
+            max-height: 80vh; /* 限制模态框内容的最大高度 */
+            overflow-y: auto; /* 启用垂直滚动条 */
+            word-wrap: break-word; /* 自动换行，避免内容超出边界 */
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const forms = document.querySelectorAll('form');
+            const modal = document.getElementById('result-modal');
+            const modalContent = document.getElementById('modal-content');
+
             forms.forEach(form => {
                 form.addEventListener('submit', function(event) {
                     event.preventDefault(); // 阻止默认表单提交
@@ -59,20 +105,31 @@
                         if (!response.ok) {
                             throw new Error('网络响应失败');
                         }
-                        return response.blob();
+                        return response.json(); // 假设后端返回 JSON 数据
                     })
-                    .then(blob => {
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = 'output.xlsx'; // 设置下载文件名
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
+                    .then(data => {
+                        // 填充模态框内容
+                        modalContent.innerHTML = '<span class="close">&times;</span>';
+                        if (data.error) {
+                            modalContent.innerHTML += `<p style='color: red;'>错误: ${data.error}</p>`;
+                        } else {
+                            modalContent.innerHTML += '<h3>提取结果</h3>';
+                            data.results.forEach(result => {
+                                modalContent.innerHTML += `<p>原始链接: ${result['原始链接']}<br>Deeplink: ${result['Deeplink']}<br>状态: ${result['状态']}</p>`;
+                            });
+                        }
+
+                        // 重新绑定关闭按钮事件
+                        const closeModal = modalContent.querySelector('.close');
+                        closeModal.onclick = function() {
+                            modal.style.display = 'none';
+                        };
+
+                        // 显示模态框
+                        modal.style.display = 'block';
                     })
                     .catch(error => {
-                        console.error('下载失败:', error);
+                        console.error('处理失败:', error);
                     })
                     .finally(() => {
                         if (spinner) {
@@ -105,6 +162,13 @@
                 <input type="file" id="link_file" name="link_file" accept=".txt" required>
                 <button type="submit">上传并提取 <span class="spinner"></span></button>
             </form>
+        </div>
+
+        <!-- 添加模态框结构 -->
+        <div id="result-modal" class="modal">
+            <div id="modal-content" class="modal-content">
+                <span class="close">&times;</span>
+            </div>
         </div>
     </div>
 </body>

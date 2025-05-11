@@ -36,7 +36,7 @@ def index():
 def extract_single_link():
     """处理单个短链接的提取请求。"""
     short_url = request.form.get('short_url')
-    results = [] # Use a different name than the flask.results global
+    results = []
     error = None
 
     if not short_url:
@@ -55,10 +55,13 @@ def extract_single_link():
             error_message = f"提取过程中发生错误: {str(e)}"
             results.append({'原始链接': short_url, 'Deeplink': error_message, '状态': '错误'})
             print(f"Web Service: 提取异常: {error_message}")
-            error = error_message # Assign error to be displayed on the page
+            error = error_message
 
-    # For single link, always render result.html to show the result or error
-    return render_template('result.html', results=results, error=error, source_type='single')
+    # 返回 JSON 数据
+    return {
+        'results': results,
+        'error': error
+    }
 
 
 @app.route('/upload', methods=['POST'])
