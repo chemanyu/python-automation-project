@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException # Import TimeoutException
 import time
 import re
-from urllib.parse import unquote, parse_qs, urlparse
+from urllib.parse import unquote, parse_qs, urlparse, quote
 import requests # 导入 requests 包
 
 # 配置 ChromeDriver 路径 - 如果您的路径不同，请替换为您的 ChromeDriver 路径
@@ -69,7 +69,11 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
                 deeplink = unquote(potential_deeplink)
                 print(f"在 URL 参数 'tbopenurl' 中找到的 deeplink: {deeplink}")
-                return deeplink
+                # 对提取到的 Deeplink 进行 URL 编码并拼接
+                encoded_deeplink = quote(deeplink)
+                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+                print(f"最终拼接的 URL: {final_url}")
+                return final_url 
             # 有时它是嵌套的，例如在 'params'（JSON格式）中
         
         if 'url' in query_params: # 另一个常见参数
@@ -77,7 +81,11 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
                 deeplink = unquote(potential_deeplink)
                 print(f"在 URL 参数 'url' 中找到的 deeplink: {deeplink}")
-                return deeplink
+                # 对提取到的 Deeplink 进行 URL 编码并拼接
+                encoded_deeplink = quote(deeplink)
+                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+                print(f"最终拼接的 URL: {final_url}")
+                return final_url 
 
 
         page_source = driver.page_source
@@ -89,7 +97,11 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
                 print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
-                return deeplink
+                # 对提取到的 Deeplink 进行 URL 编码并拼接
+                encoded_deeplink = quote(deeplink)
+                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+                print(f"最终拼接的 URL: {final_url}")
+                return final_url 
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
@@ -103,7 +115,11 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
                 if match:
                     deeplink = match.group(0)
                     print(f"在 'data-params' 属性中找到的 deeplink: {deeplink}")
-                    return deeplink
+                    # 对提取到的 Deeplink 进行 URL 编码并拼接
+                    encoded_deeplink = quote(deeplink)
+                    final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+                    print(f"最终拼接的 URL: {final_url}")
+                    return final_url 
         except Exception as e:
             print(f"注意: 查找 'data-params' 中的 deeplink 时出错（或未找到）: {e}")
             
@@ -124,7 +140,7 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
                 for match_item in matches:
                     # 如果正则表达式返回分组，match_item 可能是一个元组
                     potential_link = match_item if isinstance(match_item, str) else match_item[0]
-                    
+
                     potential_link = unquote(potential_link) # 始终尝试解码
 
                     if potential_link.lower().startswith("taobao://") or \
@@ -134,12 +150,17 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
                         print(f"使用正则表达式模式 '{pattern}' 找到的潜在 deeplink: {deeplink}")
                         # 优先处理直接的应用协议
                         if deeplink.lower().startswith("taobao://") or deeplink.lower().startswith("tbopen://"):
-                            return deeplink 
-                if deeplink: # 如果找到了任何 deeplink（即使尚未返回）
-                    return deeplink # 返回通过正则表达式找到的第一个看起来合理的链接
+                            break # 退出当前循环，但不直接返回
 
-        if not deeplink:
-            print("使用通用策略未找到Deeplink。") # 函数内部日志保持
+            if deeplink: # 如果找到了任何 deeplink（即使尚未返回）
+                break # 退出外层循环
+
+        if deeplink:
+            # 对提取到的 Deeplink 进行 URL 编码并拼接
+            encoded_deeplink = quote(deeplink)
+            final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+            print(f"最终拼接的 URL: {final_url}")
+            return final_url
 
     except Exception as e:
         print(f"提取deeplink过程中发生错误: {e}") # 函数内部日志保持
@@ -149,109 +170,5 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             print("关闭内部创建的浏览器实例。") # 函数内部日志保持
             driver.quit()
 
-    return deeplink
-
-if __name__ == "__main__":
-    input_file_path = "input_shortlinks.txt"  # A文件名，包含短链接，每行一个
-    output_file_path = "output_deeplinks.txt" # B文件名，用于保存结果
-
-    print(f"将从文件 '{input_file_path}' 读取短链接...")
-    print(f"提取的Deeplinks将保存到文件 '{output_file_path}'...")
-
-    # 检查 ChromeDriver 路径是否适合 Linux，如果 CHROME_DRIVER_PATH 仍然是 macOS 路径，则提醒用户
-    if "/opt/homebrew/" in CHROME_DRIVER_PATH:
-        print(f"警告: CHROME_DRIVER_PATH ('{CHROME_DRIVER_PATH}') 可能未针对Linux环境正确配置。请确保在部署到Linux前更新此路径。")
-
-    # 初始化浏览器驱动
-    shared_driver = None
-    try:
-        print("正在初始化共享浏览器实例...")
-        chrome_options_main = Options()
-        mobile_emulation_main = {
-            "deviceMetrics": {"width": 375, "height": 812, "pixelRatio": 3.0},
-            "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
-        }
-        chrome_options_main.add_experimental_option("mobileEmulation", mobile_emulation_main)
-        chrome_options_main.add_argument("--headless")
-        chrome_options_main.add_argument("--disable-gpu")
-        chrome_options_main.add_argument("--no-sandbox")
-        chrome_options_main.add_argument("--disable-dev-shm-usage")
-        chrome_options_main.add_argument('log-level=3')
-        try:
-            service_main = Service(CHROME_DRIVER_PATH)
-            shared_driver = webdriver.Chrome(service=service_main, options=chrome_options_main)
-            print("共享浏览器实例初始化成功。")
-        except Exception as e_main_path:
-            print(f"初始化共享 ChromeDriver 时出错 (路径: '{CHROME_DRIVER_PATH}'): {e_main_path}")
-            print("尝试从系统 PATH 初始化共享 ChromeDriver...")
-            try:
-                shared_driver = webdriver.Chrome(options=chrome_options_main)
-                print("共享浏览器实例从 PATH 初始化成功。")
-            except Exception as e_main_path_fallback:
-                print(f"从 PATH 初始化共享 ChromeDriver 时出错: {e_main_path_fallback}")
-                print("无法启动浏览器，将无法使用Selenium方法。请检查配置。")
-                # shared_driver 会保持为 None
-
-        if shared_driver is None:
-            print("错误：未能初始化共享浏览器驱动。无法继续使用Selenium方法进行批量处理。")
-            # 在这种情况下，可以选择退出，或者只使用 no_browser 方法（如果实现了该逻辑）
-            # 此处我们简单退出或提示用户
-            exit_message = "请检查ChromeDriver配置。程序将退出。"
-            print(exit_message)
-            try:
-                with open(output_file_path, 'a', encoding='utf-8') as outfile_err:
-                    outfile_err.write(f"错误: 未能初始化共享浏览器驱动。{exit_message} 时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            except Exception:
-                pass # 忽略写入错误
-            exit()
-
-        with open(input_file_path, 'r', encoding='utf-8') as infile, \
-             open(output_file_path, 'a', encoding='utf-8') as outfile:
-            
-            timestamp_start = time.strftime('%Y-%m-%d %H:%M:%S')
-            outfile.write(f"--- 开始处理时间: {timestamp_start} (使用共享浏览器实例) ---\n")
-            print(f"--- 开始处理时间: {timestamp_start} (使用共享浏览器实例) ---")
-            
-            processed_count = 0
-            for line_number, short_url_raw in enumerate(infile, 1):
-                short_url = short_url_raw.strip()
-                if not short_url or short_url.startswith('#'):
-                    continue
-
-                processed_count += 1
-                print(f"\n--- 正在处理第 {line_number} 行 (第 {processed_count} 个有效链接): {short_url} ---")
-                
-                print("正在使用共享浏览器实例通过 Selenium 方法提取...")
-                # 使用共享的 driver 实例调用函数
-                extracted_link = get_taobao_deeplink(short_url, driver=shared_driver) 
-                
-                if extracted_link:
-                    result_message = f"{extracted_link}"
-                    print(f"提取成功 (Selenium): {extracted_link}")
-                else:
-                    result_message = "提取失败 (Selenium)"
-                    print("使用Selenium方法未能提取deeplink。")
-
-                outfile.write(f"原始短链接: {short_url} | Deeplink: {result_message}\n")
-                outfile.flush()
-
-            timestamp_end = time.strftime('%Y-%m-%d %H:%M:%S')
-            summary_message = f"--- 处理完成时间: {timestamp_end} | 总共处理有效链接数: {processed_count} ---"
-            outfile.write(f"{summary_message}\n\n")
-            print(f"\n{summary_message}")
-            print(f"所有短链接处理完毕。结果已追加到 '{output_file_path}'")
-
-    except FileNotFoundError:
-        print(f"错误: 输入文件 '{input_file_path}' 未找到。请在该脚本的同目录下创建该文件，并每行输入一个短链接。")
-    except Exception as e:
-        print(f"主处理过程中发生严重错误: {e}")
-        try:
-            with open(output_file_path, 'a', encoding='utf-8') as outfile_main_err:
-                outfile_main_err.write(f"主处理过程中发生严重错误: {e} 时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        except Exception:
-            pass # 忽略写入错误
-    finally:
-        if shared_driver:
-            print("正在关闭共享浏览器实例...")
-            shared_driver.quit()
-            print("共享浏览器实例已关闭。")
+    # 如果未找到 Deeplink，返回 None
+    return None

@@ -81,12 +81,10 @@
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const forms = document.querySelectorAll('form');
-            const modal = document.getElementById('result-modal');
-            const modalContent = document.getElementById('modal-content');
-
-            forms.forEach(form => {
-                form.addEventListener('submit', function(event) {
+            // 单个链接提取逻辑
+            const singleLinkForm = document.querySelector('form[action="{{ url_for('extract_single_link') }}"]');
+            if (singleLinkForm) {
+                singleLinkForm.addEventListener('submit', function(event) {
                     event.preventDefault(); // 阻止默认表单提交
 
                     const spinner = this.querySelector('.spinner');
@@ -105,10 +103,12 @@
                         if (!response.ok) {
                             throw new Error('网络响应失败');
                         }
-                        return response.json(); // 假设后端返回 JSON 数据
+                        return response.json();
                     })
                     .then(data => {
-                        // 填充模态框内容
+                        const modal = document.getElementById('result-modal');
+                        const modalContent = document.getElementById('modal-content');
+
                         modalContent.innerHTML = '<span class="close">&times;</span>';
                         if (data.error) {
                             modalContent.innerHTML += `<p style='color: red;'>错误: ${data.error}</p>`;
@@ -119,13 +119,11 @@
                             });
                         }
 
-                        // 重新绑定关闭按钮事件
                         const closeModal = modalContent.querySelector('.close');
                         closeModal.onclick = function() {
                             modal.style.display = 'none';
                         };
 
-                        // 显示模态框
                         modal.style.display = 'block';
                     })
                     .catch(error => {
@@ -137,7 +135,18 @@
                         }
                     });
                 });
-            });
+            }
+
+            // 批量链接提取逻辑
+            const uploadForm = document.querySelector('form[action="{{ url_for('upload_and_extract_file') }}"]');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function() {
+                    const spinner = this.querySelector('.spinner');
+                    if (spinner) {
+                        spinner.style.display = 'inline-block';
+                    }
+                });
+            }
         });
     </script>
 </head>
