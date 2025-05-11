@@ -140,11 +140,27 @@
             // 批量链接提取逻辑
             const uploadForm = document.querySelector('form[action="{{ url_for('upload_and_extract_file') }}"]');
             if (uploadForm) {
-                uploadForm.addEventListener('submit', function() {
+                uploadForm.addEventListener('submit', function(event) {
                     const spinner = this.querySelector('.spinner');
                     if (spinner) {
                         spinner.style.display = 'inline-block';
                     }
+
+                    // 创建隐藏的 iframe 用于监听下载完成
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.name = 'upload_iframe';
+                    document.body.appendChild(iframe);
+
+                    // 设置表单的 target 为 iframe
+                    this.target = 'upload_iframe';
+
+                    iframe.onload = function() {
+                        if (spinner) {
+                            spinner.style.display = 'none';
+                        }
+                        document.body.removeChild(iframe);
+                    };
                 });
             }
         });
