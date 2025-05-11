@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException # Import TimeoutException
 import time
 import re
 from urllib.parse import unquote, parse_qs, urlparse
@@ -53,10 +54,8 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
         print(f"导航到短链接: {short_url}") # 函数内部日志保持
         driver.get(short_url)
         
-        # 等待重定向和初始页面加载
-        # 淘宝页面可能很复杂，涉及多次重定向/动态内容加载
-        print("等待页面加载 (3 秒)...")
-        time.sleep(3) 
+        # 使用显式等待替换固定的 time.sleep()
+        time.sleep(10) # 原来的固定等待，现在被上面的显式等待替代
 
         current_url = driver.current_url
         print(f"初始加载后当前 URL: {current_url}")

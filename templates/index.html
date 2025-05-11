@@ -18,7 +18,71 @@
         button:hover { background-color: #c9302c; }
         .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
         .section:last-child { border-bottom: none; }
+
+        /* 添加加载动画样式 */
+        .spinner {
+            display: none;
+            width: 14px; /* 调整宽度 */
+            height: 14px; /* 调整高度 */
+            border: 2px solid #f3f3f3; /* 调整边框宽度 */
+            border-top: 2px solid #d9534f; /* 调整边框宽度 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 5px; /* 调整间距 */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault(); // 阻止默认表单提交
+
+                    const spinner = this.querySelector('.spinner');
+                    if (spinner) {
+                        spinner.style.display = 'inline-block';
+                    }
+
+                    const formData = new FormData(this);
+                    const action = this.getAttribute('action');
+
+                    fetch(action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('网络响应失败');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = 'output.xlsx'; // 设置下载文件名
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    })
+                    .catch(error => {
+                        console.error('下载失败:', error);
+                    })
+                    .finally(() => {
+                        if (spinner) {
+                            spinner.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -29,7 +93,7 @@
             <form action="{{ url_for('extract_single_link') }}" method="post">
                 <label for="short_url">输入淘宝短链接:</label>
                 <input type="text" id="short_url" name="short_url" required>
-                <button type="submit">提取Deeplink</button>
+                <button type="submit">提取Deeplink <span class="spinner"></span></button>
             </form>
         </div>
 
@@ -39,7 +103,7 @@
             <form action="{{ url_for('upload_and_extract_file') }}" method="post" enctype="multipart/form-data">
                 <label for="link_file">选择文件:</label>
                 <input type="file" id="link_file" name="link_file" accept=".txt" required>
-                <button type="submit">上传并提取</button>
+                <button type="submit">上传并提取 <span class="spinner"></span></button>
             </form>
         </div>
     </div>

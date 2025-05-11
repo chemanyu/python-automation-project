@@ -1,3 +1,5 @@
 Flask
 selenium
 requests
+pandas
+openpyxl
