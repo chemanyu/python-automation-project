@@ -15,7 +15,8 @@ import requests # 导入 requests 包
 # 或者确保 chromedriver 在您的系统 PATH 环境变量中
 CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
 
-def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
+# 添加一个参数 platform，表示选择的系统（安卓或 iOS）
+def get_taobao_deeplink(short_url, driver=None, platform="ios"):
     """
     尝试从给定的淘宝短链接中提取 deeplink。
     模拟移动浏览器环境。
@@ -60,6 +61,8 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
         current_url = driver.current_url
         print(f"初始加载后当前 URL: {current_url}")
 
+        print(f"plat: {platform }")
+
         # 策略 1：检查当前 URL 是否包含 'tbopenurl' 或类似参数
         parsed_url = urlparse(current_url)
         query_params = parse_qs(parsed_url.query)
@@ -69,23 +72,14 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
                 deeplink = unquote(potential_deeplink)
                 print(f"在 URL 参数 'tbopenurl' 中找到的 deeplink: {deeplink}")
-                # 对提取到的 Deeplink 进行 URL 编码并拼接
-                encoded_deeplink = quote(deeplink)
-                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-                print(f"最终拼接的 URL: {final_url}")
-                return final_url 
-            # 有时它是嵌套的，例如在 'params'（JSON格式）中
+                return process_deeplink(deeplink, platform)
         
         if 'url' in query_params: # 另一个常见参数
             potential_deeplink = query_params['url'][0]
             if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
                 deeplink = unquote(potential_deeplink)
                 print(f"在 URL 参数 'url' 中找到的 deeplink: {deeplink}")
-                # 对提取到的 Deeplink 进行 URL 编码并拼接
-                encoded_deeplink = quote(deeplink)
-                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-                print(f"最终拼接的 URL: {final_url}")
-                return final_url 
+                return process_deeplink(deeplink, platform)
 
 
         page_source = driver.page_source
@@ -97,11 +91,7 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
                 print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
-                # 对提取到的 Deeplink 进行 URL 编码并拼接
-                encoded_deeplink = quote(deeplink)
-                final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-                print(f"最终拼接的 URL: {final_url}")
-                return final_url 
+                return process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
@@ -115,11 +105,7 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
                 if match:
                     deeplink = match.group(0)
                     print(f"在 'data-params' 属性中找到的 deeplink: {deeplink}")
-                    # 对提取到的 Deeplink 进行 URL 编码并拼接
-                    encoded_deeplink = quote(deeplink)
-                    final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-                    print(f"最终拼接的 URL: {final_url}")
-                    return final_url 
+                    return process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 'data-params' 中的 deeplink 时出错（或未找到）: {e}")
             
@@ -155,12 +141,9 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
             if deeplink: # 如果找到了任何 deeplink（即使尚未返回）
                 break # 退出外层循环
 
+        # 替换直接的 URL 编码和拼接逻辑为调用 process_deeplink 方法
         if deeplink:
-            # 对提取到的 Deeplink 进行 URL 编码并拼接
-            encoded_deeplink = quote(deeplink)
-            final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-            print(f"最终拼接的 URL: {final_url}")
-            return final_url
+            return process_deeplink(deeplink, platform)
 
     except Exception as e:
         print(f"提取deeplink过程中发生错误: {e}") # 函数内部日志保持
@@ -172,3 +155,19 @@ def get_taobao_deeplink(short_url, driver=None): # 添加 driver 参数
 
     # 如果未找到 Deeplink，返回 None
     return None
+
+def process_deeplink(deeplink, platform):
+    """
+    根据平台处理 Deeplink。
+    如果是 iOS 平台，进行 URL 编码并拼接。
+    如果是安卓平台，直接返回原始 Deeplink。
+    """
+    if platform.lower() == "ios":
+        # 对提取到的 Deeplink 进行 URL 编码并拼接
+        encoded_deeplink = quote(deeplink)
+        final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
+        print(f"最终拼接的 URL: {final_url}")
+        return final_url
+    else:
+        print(f"安卓平台，返回原始 Deeplink: {deeplink}")
+        return deeplink

@@ -40,12 +40,14 @@ def extract_single_link():
     results = []
     error = None
 
+    platform = request.form.get('platform', 'ios').lower()  # 获取平台参数，默认为 iOS
+
     if not short_url:
         error = "请输入淘宝短链接。"
     else:
         print(f"Web Service: 收到单个链接提取请求: {short_url}")
         try:
-            deeplink = get_taobao_deeplink(short_url)
+            deeplink = get_taobao_deeplink(short_url, None, platform)  # 默认平台为 iOS
             if deeplink:
                 results.append({'原始链接': short_url, 'Deeplink': deeplink, '状态': '成功'})
                 print(f"Web Service: 提取成功: {deeplink}")
@@ -73,6 +75,8 @@ def upload_and_extract_file():
         return "没有选择文件", 400
 
     file = request.files['link_file']
+    platform = request.form.get('platform', 'ios').lower()  # 获取平台参数，默认为 iOS
+
     if file.filename == '':
         print("Web Service: 文件名为空")
         return "没有选择文件", 400
@@ -95,7 +99,7 @@ def upload_and_extract_file():
 
         print(f"Web Service: 开始处理 {len(short_urls)} 个链接...")
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {executor.submit(get_taobao_deeplink, url): url for url in short_urls}
+            futures = {executor.submit(get_taobao_deeplink, url, None, platform): url for url in short_urls}
             for future in concurrent.futures.as_completed(futures):
                 url = futures[future]
                 try:
