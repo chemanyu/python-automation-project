@@ -19,16 +19,28 @@
         .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
         .section:last-child { border-bottom: none; }
 
-        /* 添加加载动画样式 */
-        .spinner {
-            display: none;
-            width: 14px; /* 调整宽度 */
-            height: 14px; /* 调整高度 */
-            border: 2px solid #f3f3f3; /* 调整边框宽度 */
-            border-top: 2px solid #d9534f; /* 调整边框宽度 */
+        /* 加载弹窗样式 */
+        .loading-modal {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #d9534f;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-left: 5px; /* 调整间距 */
         }
 
         @keyframes spin {
@@ -81,16 +93,31 @@
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // 创建加载弹窗
+            const loadingModal = document.createElement('div');
+            loadingModal.className = 'loading-modal';
+            loadingModal.innerHTML = '<div class="loading-spinner"></div>';
+            document.body.appendChild(loadingModal);
+
+            // 显示加载弹窗
+            function showLoading() {
+                loadingModal.style.display = 'flex';
+            }
+
+            // 隐藏加载弹窗
+            function hideLoading() {
+                loadingModal.style.display = 'none';
+            }
+
+            // 页面加载完成时隐藏加载弹窗
+            hideLoading();
+
             // 单个链接提取逻辑
             const singleLinkForm = document.querySelector('form[action="{{ url_for('extract_single_link') }}"]');
             if (singleLinkForm) {
                 singleLinkForm.addEventListener('submit', function(event) {
                     event.preventDefault(); // 阻止默认表单提交
-
-                    const spinner = this.querySelector('.spinner');
-                    if (spinner) {
-                        spinner.style.display = 'inline-block';
-                    }
+                    showLoading();
 
                     const formData = new FormData(this);
                     const action = this.getAttribute('action');
@@ -130,9 +157,7 @@
                         console.error('处理失败:', error);
                     })
                     .finally(() => {
-                        if (spinner) {
-                            spinner.style.display = 'none';
-                        }
+                        hideLoading();
                     });
                 });
             }
@@ -141,26 +166,38 @@
             const uploadForm = document.querySelector('form[action="{{ url_for('upload_and_extract_file') }}"]');
             if (uploadForm) {
                 uploadForm.addEventListener('submit', function(event) {
-                    const spinner = this.querySelector('.spinner');
-                    if (spinner) {
-                        spinner.style.display = 'inline-block';
-                    }
-
-                    // 创建隐藏的 iframe 用于监听下载完成
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.name = 'upload_iframe';
-                    document.body.appendChild(iframe);
+                    showLoading(); // 显示加载动画
 
                     // 设置表单的 target 为 iframe
                     this.target = 'upload_iframe';
 
-                    iframe.onload = function() {
-                        if (spinner) {
-                            spinner.style.display = 'none';
-                        }
-                        document.body.removeChild(iframe);
-                    };
+                    // 创建隐藏的 iframe 用于监听下载完成
+                    let iframe = document.getElementById('upload_iframe');
+                    if (!iframe) {
+                        iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.id = 'upload_iframe';
+                        iframe.name = 'upload_iframe';
+                        document.body.appendChild(iframe);
+                    }
+
+                    // 开始轮询检测 Cookie
+                    function waitForDownload() {
+                        const interval = setInterval(() => {
+                            if (document.cookie.includes("download_done=true")) {
+                                clearInterval(interval);
+                                hideLoading(); // 隐藏加载动画
+
+                                // 清除 cookie
+                                document.cookie = "download_done=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+                                // 重置表单
+                                uploadForm.reset();
+                            }
+                        }, 500); // 每 0.5 秒检测一次
+                    }
+
+                    waitForDownload();
                 });
             }
         });

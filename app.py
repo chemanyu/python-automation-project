@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import concurrent.futures
 import pandas as pd # Added pandas
 from io import BytesIO # Added BytesIO
+from flask import make_response
 
 # 从 src 模块导入 deeplink 提取函数
 from src.extract_taobao_deeplink import get_taobao_deeplink
@@ -99,6 +100,7 @@ def upload_and_extract_file():
                 url = futures[future]
                 try:
                     deeplink = future.result()
+                    print(f"Web Service: 从 {url} 提取到的 Deeplink: {deeplink}")  # 打印获取到的链接
                     results_list.append({'原始链接': url, 'Deeplink': deeplink or '未提取到', '状态': '成功' if deeplink else '失败'})
                 except Exception as e:
                     print(f"Web Service: 处理链接 {url} 时出错: {e}")
@@ -112,12 +114,17 @@ def upload_and_extract_file():
 
         output_filename = f"deeplink_results_{os.path.splitext(filename)[0]}.xlsx"
         print(f"Web Service: 准备发送文件: {output_filename}")
-        return send_file(
+        response = make_response(send_file(
             excel_buffer,
             as_attachment=True,
             download_name=output_filename,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+        ))
+
+        # 设置一个短期 cookie 表示下载完成
+        response.set_cookie('download_done', 'true', max_age=60, path='/')
+
+        return response
 
     except Exception as e:
         print(f"Web Service: 发生错误: {e}")
