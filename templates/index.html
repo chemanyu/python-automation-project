@@ -113,7 +113,7 @@
             hideLoading();
 
             // 单个链接提取逻辑
-            const singleLinkForm = document.querySelector('form[action="{{ url_for('extract_single_link') }}"]');
+            const singleLinkForm = document.getElementById('single-link-form');
             const platformSelect = document.getElementById('platform');
 
             if (singleLinkForm) {
@@ -167,8 +167,8 @@
             }
 
             // 批量链接提取逻辑
-            const uploadForm = document.querySelector('form[action="{{ url_for('upload_and_extract_file') }}"]');
-
+            const uploadForm = document.getElementById('upload-link-form');
+            
             if (uploadForm) {
                 uploadForm.addEventListener('submit', function(event) {
                     event.preventDefault(); // 阻止默认表单提交
@@ -224,7 +224,7 @@
 
         <div class="section">
             <h2>单个链接提取</h2>
-            <form action="{{ url_for('extract_single_link') }}" method="post">
+            <form id="single-link-form" action="/ulink{{ url_for('extract_single_link') }}" method="post">
                 <label for="short_url">输入淘宝短链接:</label>
                 <input type="text" id="short_url" name="short_url" required>
                 <button type="submit">提取Deeplink <span class="spinner"></span></button>
@@ -234,7 +234,7 @@
         <div class="section">
             <h2>批量链接提取 (通过文件上传)</h2>
             <p>请上传一个文本文件 (.txt)，每行包含一个淘宝短链接。</p>
-            <form action="{{ url_for('upload_and_extract_file') }}" method="post" enctype="multipart/form-data">
+            <form id="upload-link-form" action="/ulink{{ url_for('upload_and_extract_file') }}" method="post" enctype="multipart/form-data">
                 <label for="link_file">选择文件:</label>
                 <input type="file" id="link_file" name="link_file" accept=".txt" required>
                 <button type="submit">上传并提取 <span class="spinner"></span></button>

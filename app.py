@@ -33,7 +33,7 @@ def index():
     """渲染主页面，包含输入表单。"""
     return render_template('index.html')
 
-@app.route('/ulink/extract', methods=['POST'])
+@app.route('/extract', methods=['POST'])
 def extract_single_link():
     """处理单个短链接的提取请求。"""
     short_url = request.form.get('short_url')
@@ -67,7 +67,7 @@ def extract_single_link():
     }
 
 
-@app.route('/ulink/upload', methods=['POST'])
+@app.route('/upload', methods=['POST'])
 def upload_and_extract_file():
     """处理上传文件并提取其中所有短链接的请求, 结果以Excel文件形式下载。"""
     if 'link_file' not in request.files:
