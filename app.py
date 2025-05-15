@@ -98,15 +98,23 @@ def upload_and_extract_file():
             return "上传的文件为空或不包含有效链接", 400
 
         print(f"Web Service: 开始处理 {len(short_urls)} 个链接...")
+        success_count = 0
+        fail_count = 0
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = {executor.submit(get_taobao_deeplink, url, None, platform): url for url in short_urls}
             for future in concurrent.futures.as_completed(futures):
                 url = futures[future]
                 try:
                     deeplink = future.result()
-                    print(f"Web Service: 从 {url} 提取到的 Deeplink: {deeplink}")  # 打印获取到的链接
-                    results_list.append({'原始链接': url, 'Deeplink': deeplink or '未提取到', '状态': '成功' if deeplink else '失败'})
+                    #print(f"Web Service: 从 {url} 提取到的 Deeplink: {deeplink}")  # 打印获取到的链接
+                    if deeplink:
+                        success_count += 1
+                        results_list.append({'原始链接': url, 'Deeplink': deeplink, '状态': '成功'})
+                    else:
+                        fail_count += 1
+                        results_list.append({'原始链接': url, 'Deeplink': '未提取到', '状态': '失败'})
                 except Exception as e:
+                    fail_count += 1
                     print(f"Web Service: 处理链接 {url} 时出错: {e}")
                     results_list.append({'原始链接': url, 'Deeplink': str(e), '状态': '错误'})
 
@@ -125,7 +133,9 @@ def upload_and_extract_file():
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         ))
 
-        # 设置一个短期 cookie 表示下载完成
+        # 设置统计数据到 cookie
+        print(f"Web Service: 成功提取 {success_count} 个链接，失败 {fail_count} 个链接")
+        response.set_cookie('batch_stats', f'success={success_count};fail={fail_count}', max_age=60)
         response.set_cookie('download_done', 'true', max_age=60, path='/')
 
         return response

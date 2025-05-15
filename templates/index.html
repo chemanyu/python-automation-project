@@ -167,8 +167,29 @@
             }
 
             // 批量链接提取逻辑
+            //const uploadForm = document.querySelector('form[action="/ulink{{ url_for('upload_and_extract_file') }}"]');
             const uploadForm = document.getElementById('upload-link-form');
-            
+
+            function getBatchStatsFromCookie() {
+                const match = document.cookie.match(/batch_stats=([^;]+)/);
+                if (match) {
+                    // 去掉首尾引号
+                    let raw = match[1];
+                    if (raw.startsWith('"') && raw.endsWith('"')) {
+                        raw = raw.slice(1, -1);
+                    }
+                    // 处理 \\073 为分号
+                    raw = decodeURIComponent(raw.replace(/\\073/g, ';'));
+                    const stats = raw.split(';').reduce((acc, pair) => {
+                        const [k, v] = pair.split('=');
+                        acc[k.trim()] = v.trim();
+                        return acc;
+                    }, {});
+                    return stats;
+                }
+                return null;
+            }
+
             if (uploadForm) {
                 uploadForm.addEventListener('submit', function(event) {
                     event.preventDefault(); // 阻止默认表单提交
@@ -199,6 +220,14 @@
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(url);
+
+                        // 下载完成后读取 cookie 并弹窗提示
+                        setTimeout(() => {
+                            const stats = getBatchStatsFromCookie();
+                            if (stats) {
+                                alert(`批量转链完成！成功：${stats.success} 条，失败：${stats.fail} 条。请检查下载文件。`);
+                            }
+                        }, 500);
                     })
                     .catch(error => {
                         console.error('处理失败:', error);
