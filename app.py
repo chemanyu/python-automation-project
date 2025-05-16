@@ -93,6 +93,11 @@ def upload_and_extract_file():
         with open(filepath, 'r', encoding='utf-8') as f:
             short_urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
+        # 新增：如果行数超过100，直接返回错误
+        if len(short_urls) > 100:
+            print("Web Service: 上传的文件超过100条，拒绝处理")
+            return "单次上传不能超过100条", 400
+
         if not short_urls:
             print("Web Service: 上传的文件为空或不包含有效链接")
             return "上传的文件为空或不包含有效链接", 400

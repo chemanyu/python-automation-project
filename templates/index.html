@@ -207,7 +207,11 @@
                     })
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('网络响应失败');
+                            // 处理后端返回的错误信息
+                            return response.text().then(text => {
+                                //alert(text); // 直接弹窗提示后端返回的错误信息
+                                throw new Error(text); // 阻止后续 then 执行
+                            });
                         }
                         return response.blob(); // 处理文件下载
                     })
@@ -225,12 +229,13 @@
                         setTimeout(() => {
                             const stats = getBatchStatsFromCookie();
                             if (stats) {
-                                alert(`批量转链完成！成功：${stats.success} 条，失败：${stats.fail} 条。请检查下载文件。`);
+                                alert(`批量转链完成！成功：${stats.success} 条，失败：${stats.fail} 条。`);
                             }
                         }, 500);
                     })
                     .catch(error => {
-                        console.error('处理失败:', error);
+                        // 这里弹窗展示后端返回的错误信息
+                        alert(error.message);
                     })
                     .finally(() => {
                         hideLoading();
