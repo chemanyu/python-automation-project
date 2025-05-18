@@ -39,7 +39,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
 
         try:
             service = Service(CHROME_DRIVER_PATH)
-            driver = webdriver.Chrome(service=service, options=chrome_options)
+            driver = webdriver.Chrome(service=service, options=chrome_options)  # 用 seleniumwire 的 webdriver
         except Exception as e:
             print(f"初始化 ChromeDriver 时出错 (路径: '{CHROME_DRIVER_PATH}'): {e}")
             print("尝试从系统 PATH 初始化 ChromeDriver...")
@@ -55,95 +55,31 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
         #print(f"导航到短链接: {short_url}") # 函数内部日志保持
         driver.get(short_url)
         
-        # 使用显式等待替换固定的 time.sleep()
-        time.sleep(1) # 原来的固定等待，现在被上面的显式等待替代
-
+        # 使用显式等待页面加载完成
         current_url = driver.current_url
-        #print(f"初始加载后当前 URL: {current_url}")
+        print(f"初始加载后当前 URL: {current_url}")
 
         print(f"plat: {platform }")
 
-        # 策略 1：检查当前 URL 是否包含 'tbopenurl' 或类似参数
-        parsed_url = urlparse(current_url)
-        query_params = parse_qs(parsed_url.query)
-        
-        if 'tbopenurl' in query_params:
-            potential_deeplink = query_params['tbopenurl'][0]
-            if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
-                deeplink = unquote(potential_deeplink)
-                #print(f"在 URL 参数 'tbopenurl' 中找到的 deeplink: {deeplink}")
-                return process_deeplink(deeplink, platform)
-        
-        if 'url' in query_params: # 另一个常见参数
-            potential_deeplink = query_params['url'][0]
-            if potential_deeplink.startswith("taobao://") or potential_deeplink.startswith("tbopen://"):
-                deeplink = unquote(potential_deeplink)
-                #print(f"在 URL 参数 'url' 中找到的 deeplink: {deeplink}")
-                return process_deeplink(deeplink, platform)
-
-
-        page_source = driver.page_source
-        # print(f"页面源代码长度: {len(page_source)}") # 用于调试
-
         # 策略 2：查找 href 以 taobao:// 或 tbopen:// 开头的 <a> 标签
+        # 使用显式等待页面加载完成，并等待目标 <a> 标签出现
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, "//a[starts-with(@href, 'taobao://') or starts-with(@href, 'tbopen://')]") )
+            )
+        except TimeoutException:
+            print("页面加载或 deeplink <a> 标签等待超时，继续后续处理")
+
         try:
             deeplink_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'taobao://') or starts-with(@href, 'tbopen://')]")
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
-                #print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
+                print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
                 return process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
-        # 策略 3：查找 data-params 包含 taobao:// 或 tbopen:// 的元素
-        try:
-            data_param_elements = driver.find_elements(By.XPATH, "//*[contains(@data-params, 'taobao://') or contains(@data-params, 'tbopen://')]")
-            if data_param_elements:
-                data_params_str = data_param_elements[0].get_attribute("data-params")
-                # 如果可能，尝试从类 JSON 字符串中提取
-                match = re.search(r'(taobao://[^\s"\'\\}]+|tbopen://[^\s"\'\\}]+)', data_params_str)
-                if match:
-                    deeplink = match.group(0)
-                    #print(f"在 'data-params' 属性中找到的 deeplink: {deeplink}")
-                    return process_deeplink(deeplink, platform)
-        except Exception as e:
-            print(f"注意: 查找 'data-params' 中的 deeplink 时出错（或未找到）: {e}")
-            
-        # 策略 4：使用正则表达式在页面源代码中搜索各种 deeplink 模式
-        # 这种方法更通用，但可能不太精确。
-        # 适用于 taobao://, tbopen://, 和 URL编码版本的模式。
-        patterns = [
-            r'(taobao://[^\s"\'<>&]+)',  # 基本淘宝协议
-            r'(tbopen://[^\s"\'<>&]+)',  # 基本 tbopen 协议
-            r'["\'](https?://tbopen\.taobao\.com/tbopen/index\.html\?[^"\']+?)["\']', # 中间 tbopen URL
-            r'tbopenurl=([^&"\']+)', # 内容中的 tbopenurl 参数
-            r'scheme(?:%3A|=)(taobao(?:%253A%252F%252F|%3A%2F%2F|://)[^&"\']+)', # 编码的 scheme 参数
-        ]
-
-        for pattern in patterns:
-            matches = re.findall(pattern, page_source, re.IGNORECASE)
-            if matches:
-                for match_item in matches:
-                    # 如果正则表达式返回分组，match_item 可能是一个元组
-                    potential_link = match_item if isinstance(match_item, str) else match_item[0]
-
-                    potential_link = unquote(potential_link) # 始终尝试解码
-
-                    if potential_link.lower().startswith("taobao://") or \
-                       potential_link.lower().startswith("tbopen://") or \
-                       "tbopen.taobao.com" in potential_link.lower():
-                        deeplink = potential_link
-                       # print(f"使用正则表达式模式 '{pattern}' 找到的潜在 deeplink: {deeplink}")
-                        # 优先处理直接的应用协议
-                        if deeplink.lower().startswith("taobao://") or deeplink.lower().startswith("tbopen://"):
-                            break # 退出当前循环，但不直接返回
-
-            if deeplink: # 如果找到了任何 deeplink（即使尚未返回）
-                break # 退出外层循环
-
-        # 替换直接的 URL 编码和拼接逻辑为调用 process_deeplink 方法
-        if deeplink:
-            return process_deeplink(deeplink, platform)
+        print("未能找到 Deeplink。", {current_url})
 
     except Exception as e:
         print(f"提取deeplink过程中发生错误: {e}") # 函数内部日志保持

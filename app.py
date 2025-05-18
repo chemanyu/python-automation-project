@@ -5,9 +5,14 @@ import concurrent.futures
 import pandas as pd # Added pandas
 from io import BytesIO # Added BytesIO
 from flask import make_response
+import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 # 从 src 模块导入 deeplink 提取函数
-from src.extract_taobao_deeplink import get_taobao_deeplink
+from src.extract_taobao_deeplink import get_taobao_deeplink, CHROME_DRIVER_PATH
 
 app = Flask(__name__)
 
@@ -84,6 +89,7 @@ def upload_and_extract_file():
     results_list = []
     filepath = None
 
+    drivers = []
     try:
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -94,9 +100,9 @@ def upload_and_extract_file():
             short_urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
         # 新增：如果行数超过100，直接返回错误
-        if len(short_urls) > 100:
-            print("Web Service: 上传的文件超过100条，拒绝处理")
-            return "单次上传不能超过100条", 400
+        # if len(short_urls) > 100:
+        #     print("Web Service: 上传的文件超过100条，拒绝处理")
+        #     return "单次上传不能超过100条", 400
 
         if not short_urls:
             print("Web Service: 上传的文件为空或不包含有效链接")
@@ -105,23 +111,53 @@ def upload_and_extract_file():
         print(f"Web Service: 开始处理 {len(short_urls)} 个链接...")
         success_count = 0
         fail_count = 0
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {executor.submit(get_taobao_deeplink, url, None, platform): url for url in short_urls}
-            for future in concurrent.futures.as_completed(futures):
-                url = futures[future]
-                try:
-                    deeplink = future.result()
-                    #print(f"Web Service: 从 {url} 提取到的 Deeplink: {deeplink}")  # 打印获取到的链接
-                    if deeplink:
-                        success_count += 1
-                        results_list.append({'原始链接': url, 'Deeplink': deeplink, '状态': '成功'})
-                    else:
-                        fail_count += 1
-                        results_list.append({'原始链接': url, 'Deeplink': '未提取到', '状态': '失败'})
-                except Exception as e:
+
+        # 1. 创建 driver 池
+        driver_num = min(10, len(short_urls))
+        driver_queue = queue.Queue()
+        chrome_options = Options()
+        mobile_emulation = {
+            "deviceMetrics": {"width": 375, "height": 812, "pixelRatio": 3.0},
+            "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
+        }
+        chrome_options.add_experimental_option("mobileEmulation", mobile_emulation)
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument('log-level=3')
+        for _ in range(driver_num):
+            try:
+                service = Service(CHROME_DRIVER_PATH)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+            except Exception:
+                driver = webdriver.Chrome(options=chrome_options)
+            drivers.append(driver)
+            driver_queue.put(driver)
+
+        def process_link(url):
+            driver = driver_queue.get()
+            try:
+                deeplink = get_taobao_deeplink(url, driver, platform)
+                if deeplink:
+                    result = {'原始链接': url, 'Deeplink': deeplink, '状态': '成功'}
+                else:
+                    result = {'原始链接': url, 'Deeplink': '未提取到', '状态': '失败'}
+            except Exception as e:
+                result = {'原始链接': url, 'Deeplink': str(e), '状态': '错误'}
+            finally:
+                driver_queue.put(driver)
+            return result
+
+        with ThreadPoolExecutor(max_workers=driver_num) as executor:
+            future_to_url = {executor.submit(process_link, url): url for url in short_urls}
+            for future in as_completed(future_to_url):
+                res = future.result()
+                results_list.append(res)
+                if res['状态'] == '成功':
+                    success_count += 1
+                else:
                     fail_count += 1
-                    print(f"Web Service: 处理链接 {url} 时出错: {e}")
-                    results_list.append({'原始链接': url, 'Deeplink': str(e), '状态': '错误'})
 
         print("Web Service: 链接处理完成，开始生成Excel文件...")
         df = pd.DataFrame(results_list)
@@ -150,6 +186,9 @@ def upload_and_extract_file():
         return f"发生错误: {e}", 500
 
     finally:
+        if drivers:
+            for d in drivers:
+                d.quit()
         if filepath and os.path.exists(filepath):
             os.remove(filepath)
             print(f"Web Service: 已删除临时文件: {filepath}")
