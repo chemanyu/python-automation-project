@@ -86,9 +86,7 @@ def upload_and_extract_file():
         print("Web Service: 文件名为空")
         return "没有选择文件", 400
 
-    results_list = []
     filepath = None
-
     drivers = []
     try:
         filename = secure_filename(file.filename)
@@ -99,10 +97,7 @@ def upload_and_extract_file():
         with open(filepath, 'r', encoding='utf-8') as f:
             short_urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
-        # 新增：如果行数超过100，直接返回错误
-        # if len(short_urls) > 100:
-        #     print("Web Service: 上传的文件超过100条，拒绝处理")
-        #     return "单次上传不能超过100条", 400
+        results_list = [None] * len(short_urls)
 
         if not short_urls:
             print("Web Service: 上传的文件为空或不包含有效链接")
@@ -135,7 +130,7 @@ def upload_and_extract_file():
             drivers.append(driver)
             driver_queue.put(driver)
 
-        def process_link(url):
+        def process_link(idx, url):
             driver = driver_queue.get()
             try:
                 deeplink = get_taobao_deeplink(url, driver, platform)
@@ -147,13 +142,13 @@ def upload_and_extract_file():
                 result = {'原始链接': url, 'Deeplink': str(e), '状态': '错误'}
             finally:
                 driver_queue.put(driver)
-            return result
+            return (idx, result)
 
         with ThreadPoolExecutor(max_workers=driver_num) as executor:
-            future_to_url = {executor.submit(process_link, url): url for url in short_urls}
-            for future in as_completed(future_to_url):
-                res = future.result()
-                results_list.append(res)
+            futures = [executor.submit(process_link, idx, url) for idx, url in enumerate(short_urls)]
+            for future in as_completed(futures):
+                idx, res = future.result()
+                results_list[idx] = res
                 if res['状态'] == '成功':
                     success_count += 1
                 else:
