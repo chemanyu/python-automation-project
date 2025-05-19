@@ -108,7 +108,7 @@ def upload_and_extract_file():
         fail_count = 0
 
         # 1. 创建 driver 池
-        driver_num = min(10, len(short_urls))
+        driver_num = min(3, len(short_urls))
         driver_queue = queue.Queue()
         chrome_options = Options()
         mobile_emulation = {
@@ -132,6 +132,7 @@ def upload_and_extract_file():
 
         def process_link(idx, url):
             driver = driver_queue.get()
+            print(f"idx: {idx}")
             try:
                 deeplink = get_taobao_deeplink(url, driver, platform)
                 if deeplink:
@@ -144,7 +145,7 @@ def upload_and_extract_file():
                 driver_queue.put(driver)
             return (idx, result)
 
-        with ThreadPoolExecutor(max_workers=driver_num) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             futures = [executor.submit(process_link, idx, url) for idx, url in enumerate(short_urls)]
             for future in as_completed(futures):
                 idx, res = future.result()

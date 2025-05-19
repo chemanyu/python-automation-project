@@ -57,7 +57,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
         
         # 使用显式等待页面加载完成
         current_url = driver.current_url
-        print(f"初始加载后当前 URL: {current_url}")
+        #print(f"初始加载后当前 URL: {current_url}")
 
         print(f"plat: {platform }")
 
@@ -74,7 +74,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
             deeplink_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'taobao://') or starts-with(@href, 'tbopen://')]")
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
-                print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
+                #print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
                 return process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
