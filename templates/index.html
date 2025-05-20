@@ -114,7 +114,7 @@
 
             // 单个链接提取逻辑
             const singleLinkForm = document.getElementById('single-link-form');
-            const platformSelect = document.getElementById('platform');
+            //const platformSelect = document.getElementById('platform');
 
             if (singleLinkForm) {
                 singleLinkForm.addEventListener('submit', function(event) {
@@ -122,7 +122,7 @@
                     showLoading();
 
                     const formData = new FormData(this);
-                    formData.append('platform', platformSelect.value); // 添加 platform 参数
+                    //formData.append('platform', platformSelect.value); // 添加 platform 参数
 
                     const action = this.getAttribute('action');
 
@@ -146,7 +146,14 @@
                         } else {
                             modalContent.innerHTML += '<h3>提取结果</h3>';
                             data.results.forEach(result => {
-                                modalContent.innerHTML += `<p>原始链接: ${result['原始链接']}<br>Deeplink: ${result['Deeplink']}<br>状态: ${result['状态']}</p>`;
+                                modalContent.innerHTML += `
+                                <div style="padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9;">
+                                    <p><strong>原始链接:</strong> <a href="${result['原始链接']}" target="_blank" style="color: #007bff;">${result['原始链接']}</a></p>
+                                    <p><strong>Deeplink:</strong> <a href="${result['Deeplink']}" target="_blank" style="color: #28a745;">${result['Deeplink']}</a></p>
+                                    <p><strong>h5Dp:</strong> <a href="${result['h5Dp']}" target="_blank" style="color: #28a745;">${result['h5Dp']}</a></p>
+                                    <p><strong>状态:</strong> <span style="color: ${result['状态'] === '成功' ? 'green' : 'red'};">${result['状态']}</span></p>
+                                </div>
+                                `;
                             });
                         }
 
@@ -196,8 +203,8 @@
                     showLoading();
 
                     const formData = new FormData(this);
-                    const platformSelect = document.getElementById('platform');
-                    formData.append('platform', platformSelect.value); // 添加 platform 参数
+                    //const platformSelect = document.getElementById('platform');
+                    //formData.append('platform', platformSelect.value); // 添加 platform 参数
 
                     const action = this.getAttribute('action');
 
@@ -250,11 +257,11 @@
         <h1>淘宝Deeplink提取服务</h1>
 
         <!-- 添加安卓和 iOS 的选择框 -->
-        <label for="platform">选择平台:</label>
+        <!-- <label for="platform">选择平台:</label>
         <select id="platform" name="platform" required>
             <option value="ios">iOS</option>
             <option value="android">安卓</option>
-        </select>
+        </select> -->
 
         <div class="section">
             <h2>单个链接提取</h2>

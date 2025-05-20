@@ -75,7 +75,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
                 #print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
-                return process_deeplink(deeplink, platform)
+                return deeplink, process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 

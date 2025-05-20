@@ -52,12 +52,12 @@ def extract_single_link():
     else:
         print(f"Web Service: 收到单个链接提取请求: {short_url}")
         try:
-            deeplink = get_taobao_deeplink(short_url, None, platform)  # 默认平台为 iOS
+            deeplink, h5Dp = get_taobao_deeplink(short_url, None, platform)  # 默认平台为 iOS
             if deeplink:
-                results.append({'原始链接': short_url, 'Deeplink': deeplink, '状态': '成功'})
+                results.append({'原始链接': short_url, 'Deeplink': deeplink, 'h5Dp': h5Dp, '状态': '成功'})
                 print(f"Web Service: 提取成功: {deeplink}")
             else:
-                results.append({'原始链接': short_url, 'Deeplink': '未能提取到Deeplink', '状态': '失败'})
+                results.append({'原始链接': short_url, 'Deeplink': '未能提取到Deeplink', 'h5Dp': '无Deeplink', '状态': '失败'})
                 print(f"Web Service: 提取失败")
         except Exception as e:
             error_message = f"提取过程中发生错误: {str(e)}"
@@ -134,11 +134,11 @@ def upload_and_extract_file():
             driver = driver_queue.get()
             print(f"idx: {idx}")
             try:
-                deeplink = get_taobao_deeplink(url, driver, platform)
+                deeplink, h5Dp = get_taobao_deeplink(url, driver, platform)
                 if deeplink:
-                    result = {'原始链接': url, 'Deeplink': deeplink, '状态': '成功'}
+                    result = {'原始链接': url, 'Deeplink': deeplink, 'h5Dp': h5Dp, '状态': '成功'}
                 else:
-                    result = {'原始链接': url, 'Deeplink': '未提取到', '状态': '失败'}
+                    result = {'原始链接': url, 'Deeplink': '未提取到', 'h5Dp': '无Deeplink', '状态': '失败'}
             except Exception as e:
                 result = {'原始链接': url, 'Deeplink': str(e), '状态': '错误'}
             finally:
