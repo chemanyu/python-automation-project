@@ -81,6 +81,7 @@ def get_xianyu_deeplink(short_url, driver=None, platform="android"):
         driver.get(short_url)
         
         # 使用显式等待页面加载完成
+        time.sleep(1)  # 简单等待，确保页面开始加载
         print("等待页面加载...")
         try:
             WebDriverWait(driver, 5).until(
