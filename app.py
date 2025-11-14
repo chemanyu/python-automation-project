@@ -13,6 +13,7 @@ from selenium.webdriver.chrome.options import Options
 
 # 从 src 模块导入 deeplink 提取函数
 from src.extract_taobao_deeplink import get_taobao_deeplink, CHROME_DRIVER_PATH
+from src.extract_xianyu_deeplink import get_xianyu_deeplink
 
 app = Flask(__name__)
 
@@ -35,8 +36,8 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 @app.route('/', methods=['GET'])
 def index():
-    """渲染主页面，包含输入表单。"""
-    return render_template('index.html')
+    """渲染统一首页，包含淘宝和闲鱼两个标签页。"""
+    return render_template('home.html')
 
 @app.route('/extract', methods=['POST'])
 def extract_single_link():
@@ -55,7 +56,7 @@ def extract_single_link():
             deeplink, h5Dp = get_taobao_deeplink(short_url, None, platform)  # 默认平台为 iOS
             if deeplink:
                 results.append({'原始链接': short_url, 'Deeplink': deeplink, 'h5Dp': h5Dp, '状态': '成功'})
-                print(f"Web Service: 提取成功: {deeplink}")
+                print(f"Web Service: 提取成功: {results}")
             else:
                 results.append({'原始链接': short_url, 'Deeplink': '未能提取到Deeplink', 'h5Dp': '无Deeplink', '状态': '失败'})
                 print(f"Web Service: 提取失败")
@@ -65,11 +66,19 @@ def extract_single_link():
             print(f"Web Service: 提取异常: {error_message}")
             error = error_message
 
-    # 返回 JSON 数据
-    return {
-        'results': results,
-        'error': error
-    }
+    # 返回 JSON 数据，包含 deeplink 和 h5Dp
+    if results and results[0].get('Deeplink') and results[0]['Deeplink'] != '未能提取到Deeplink':
+        return {
+            'deeplink': results[0]['Deeplink'],
+            'h5Dp': results[0].get('h5Dp', ''),
+            'error': None
+        }
+    else:
+        return {
+            'deeplink': None,
+            'h5Dp': None,
+            'error': error or '提取失败，请检查链接是否正确'
+        }
 
 
 @app.route('/upload', methods=['POST'])
@@ -188,6 +197,44 @@ def upload_and_extract_file():
         if filepath and os.path.exists(filepath):
             os.remove(filepath)
             print(f"Web Service: 已删除临时文件: {filepath}")
+
+# ==================== 闲鱼转链功能 ====================
+
+
+@app.route('/xianyu/extract', methods=['POST'])
+def extract_xianyu_link():
+    """处理单个闲鱼短链接的提取请求"""
+    short_url = request.form.get('short_url')
+    platform = request.form.get('platform', 'android').lower()
+
+    if not short_url:
+        return {
+            'deeplink': None,
+            'error': "请输入闲鱼短链接。"
+        }
+    
+    print(f"Web Service: 收到闲鱼链接提取请求: {short_url}, 平台: {platform}")
+    try:
+        deeplink = get_xianyu_deeplink(short_url, None, platform)
+        if deeplink:
+            print(f"Web Service: 闲鱼转链成功")
+            return {
+                'deeplink': deeplink,
+                'error': None
+            }
+        else:
+            print(f"Web Service: 闲鱼转链失败")
+            return {
+                'deeplink': None,
+                'error': "未能提取到Deeplink"
+            }
+    except Exception as e:
+        error_message = f"提取过程中发生错误: {str(e)}"
+        print(f"Web Service: 闲鱼转链异常: {error_message}")
+        return {
+            'deeplink': None,
+            'error': error_message
+        }
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转链工具 - 淘宝 & 闲鱼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* 标签页导航 */
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 18px 20px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+        }
+        
+        .tab:hover {
+            background: #ebebeb;
+            color: #333;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        /* 标签页内容 */
+        .tab-content {
+            display: none;
+            padding: 40px;
+            animation: fadeIn 0.3s;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"], textarea, input[type="file"], select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        /* 按钮样式 */
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        /* 平台选择器（闲鱼专用） */
+        .platform-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .platform-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .platform-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .platform-option.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .platform-option input[type="radio"] {
+            display: none;
+        }
+        
+        /* 结果展示 */
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result-box.show {
+            display: block;
+            animation: slideDown 0.3s;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 500px; }
+        }
+        
+        .result-title {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .result-content {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .copy-btn {
+            margin-top: 15px;
+            background: #28a745;
+            width: auto;
+            padding: 10px 20px;
+        }
+        
+        .copy-btn:hover {
+            background: #218838;
+        }
+        
+        /* 加载动画 */
+        .loading-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-modal.show {
+            display: flex;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 结果模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+        
+        .modal-close:hover,
+        .modal-close:focus {
+            color: #000;
+        }
+        
+        .result-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        
+        .result-item p {
+            margin: 8px 0;
+            word-break: break-all;
+        }
+        
+        .result-item strong {
+            color: #555;
+        }
+        
+        .result-item a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .result-item a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 分隔线 */
+        .divider {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 30px 0;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 转链工具</h1>
+            <p>淘宝 Deeplink 提取 & 闲鱼转链服务</p>
+        </div>
+        
+        <!-- 标签页导航 -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('taobao')">
+                🛒 淘宝转链
+            </div>
+            <div class="tab" onclick="switchTab('xianyu')">
+                🐟 闲鱼转链
+            </div>
+        </div>
+        
+        <!-- 淘宝转链内容 -->
+        <div id="taobao-content" class="tab-content active">
+            <!-- 单个链接提取 -->
+            <div class="form-group">
+                <h2 style="color: #667eea; margin-bottom: 20px;">单个链接提取</h2>
+                <label for="single-link">输入淘宝短链接：</label>
+                <input type="text" id="single-link" placeholder="例如: https://m.tb.cn/h.xxxxx">
+            </div>
+            <button onclick="extractSingle()">提取Deeplink</button>
+            
+            <div class="divider"></div>
+            
+            <!-- 批量链接提取 -->
+            <div class="form-group">
+                <h2 style="color: #667eea; margin-bottom: 20px;">批量链接提取（通过文件上传）</h2>
+                <label for="file-input">上传文件（.txt）：</label>
+                <input type="file" id="file-input" accept=".txt">
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">每行包含一个淘宝短链接</p>
+            </div>
+            <button onclick="extractBatch()">上传并提取</button>
+            
+            <!-- 结果展示 -->
+            <div id="taobao-result" class="result-box">
+                <div class="result-title">✅ 提取结果</div>
+                <div class="result-content" id="taobao-result-content"></div>
+                <div id="taobao-copy-btns" style="display: flex; gap: 10px; margin-top: 15px;"></div>
+            </div>
+        </div>
+        
+        <!-- 闲鱼转链内容 -->
+        <div id="xianyu-content" class="tab-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">闲鱼链接转换</h2>
+            
+            <!-- 平台选择 -->
+            <div class="form-group">
+                <label>选择平台：</label>
+                <div class="platform-selector">
+                    <label class="platform-option active">
+                        <input type="radio" name="platform" value="android" checked>
+                        <div>📱 Android</div>
+                    </label>
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="ios">
+                        <div>🍎 iOS</div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 链接输入 -->
+            <div class="form-group">
+                <label for="xianyu-link">输入闲鱼短链接：</label>
+                <input type="text" id="xianyu-link" placeholder="例如: https://m.tb.cn/h.xxxxx">
+            </div>
+            
+            <button onclick="extractXianyu()">转换链接</button>
+            
+            <!-- 结果展示 -->
+            <div id="xianyu-result" class="result-box">
+                <div class="result-title">✅ 转换结果</div>
+                <div class="result-content" id="xianyu-result-content"></div>
+                <button class="copy-btn" onclick="copyResult('xianyu')">📋 复制结果</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载动画 -->
+    <div id="loading-modal" class="loading-modal">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <!-- 结果详情模态框 -->
+    <div id="result-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    
+    <script>
+        // 标签页切换
+        function switchTab(tabName) {
+            // 更新标签页样式
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 更新内容显示
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-content').classList.add('active');
+        }
+        
+        // 平台选择器
+        document.querySelectorAll('.platform-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.platform-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                this.classList.add('active');
+                this.querySelector('input[type="radio"]').checked = true;
+            });
+        });
+        
+        // 显示/隐藏加载动画
+        function showLoading() {
+            document.getElementById('loading-modal').classList.add('show');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading-modal').classList.remove('show');
+        }
+        
+        // 显示/隐藏模态框
+        function showModal(content) {
+            document.getElementById('modal-body').innerHTML = content;
+            document.getElementById('result-modal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('result-modal').style.display = 'none';
+        }
+        
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('result-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // 淘宝单个链接提取
+        async function extractSingle() {
+            const link = document.getElementById('single-link').value.trim();
+            if (!link) {
+                alert('请输入淘宝短链接');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'short_url=' + encodeURIComponent(link)
+                });
+                
+                const data = await response.json();
+                
+                if (data.deeplink) {
+                    // 在结果区域显示完整结果（不弹窗）
+                    const resultBox = document.getElementById('taobao-result');
+                    const resultContent = document.getElementById('taobao-result-content');
+                    const copyBtns = document.getElementById('taobao-copy-btns');
+                    let html = `<div style="margin-bottom: 15px;">
+                        <strong style="color: #667eea;">Deeplink:</strong><br>
+                        <div id="deeplink-text" style="background: #fff; padding: 10px; border-radius: 6px; margin-top: 5px; word-break: break-all; border: 1px solid #e0e0e0;">
+                            ${data.deeplink}
+                        </div>
+                    </div>`;
+                    let btns = `<button class="copy-btn" style="flex:1;" onclick="copyTextById('deeplink-text', event)">📋 复制 Deeplink</button>`;
+                    if (data.h5Dp) {
+                        html += `<div><strong style=\"color: #667eea;\">h5Dp:</strong><br>
+                            <div id=\"h5dp-text\" style=\"background: #fff; padding: 10px; border-radius: 6px; margin-top: 5px; word-break: break-all; border: 1px solid #e0e0e0;\">${data.h5Dp}</div></div>`;
+                        btns += `<button class=\"copy-btn\" style=\"flex:1;\" onclick=\"copyTextById('h5dp-text', event)\">📋 复制 h5Dp</button>`;
+                    }
+                    resultContent.innerHTML = html;
+                    copyBtns.innerHTML = btns;
+                    resultBox.classList.add('show');
+                } else {
+                    alert('提取失败: ' + (data.error || '请检查链接是否正确'));
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 淘宝批量提取
+        async function extractBatch() {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                alert('请选择文件');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('link_file', fileInput.files[0]);
+            
+            showLoading();
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text);
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'deeplink_results.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                // 读取统计信息
+                setTimeout(() => {
+                    const stats = getBatchStatsFromCookie();
+                    if (stats) {
+                        alert(`✅ 批量提取完成！\n成功: ${stats.success} 条\n失败: ${stats.fail} 条\n\n文件已下载到本地。`);
+                    } else {
+                        alert('✅ 批量提取完成！文件已下载');
+                    }
+                }, 500);
+            } catch (error) {
+                alert('上传失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 从 Cookie 读取批量处理统计信息
+        function getBatchStatsFromCookie() {
+            const match = document.cookie.match(/batch_stats=([^;]+)/);
+            if (match) {
+                let raw = match[1];
+                if (raw.startsWith('"') && raw.endsWith('"')) {
+                    raw = raw.slice(1, -1);
+                }
+                raw = decodeURIComponent(raw.replace(/\\073/g, ';'));
+                const stats = raw.split(';').reduce((acc, pair) => {
+                    const [k, v] = pair.split('=');
+                    if (k && v) {
+                        acc[k.trim()] = v.trim();
+                    }
+                    return acc;
+                }, {});
+                return stats;
+            }
+            return null;
+        }
+        
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ 已复制到剪贴板');
+            }).catch(err => {
+                alert('复制失败: ' + err);
+            });
+        }
+        
+        // 闲鱼转链
+        async function extractXianyu() {
+            const link = document.getElementById('xianyu-link').value.trim();
+            const platform = document.querySelector('input[name="platform"]:checked').value;
+            
+            if (!link) {
+                alert('请输入闲鱼短链接');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/xianyu/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `short_url=${encodeURIComponent(link)}&platform=${platform}`
+                });
+                
+                const data = await response.json();
+                const resultBox = document.getElementById('xianyu-result');
+                const resultContent = document.getElementById('xianyu-result-content');
+                
+                if (data.deeplink) {
+                    resultContent.textContent = data.deeplink;
+                    resultBox.classList.add('show');
+                } else {
+                    alert('转换失败: ' + (data.error || '请检查链接是否正确'));
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 复制结果
+        function copyResult(type) {
+            const resultContent = document.getElementById(type + '-result-content');
+            const text = resultContent.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已复制';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert('复制失败: ' + err);
+            });
+        }
+        
+        // 复制指定区域文本
+        function copyTextById(id, event) {
+            event.preventDefault();
+            const el = document.getElementById(id);
+            if (!el) return;
+            const text = el.innerText || el.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已复制';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert('复制失败: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>

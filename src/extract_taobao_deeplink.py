@@ -98,6 +98,7 @@ def process_deeplink(deeplink, platform):
     如果是 iOS 平台，进行 URL 编码并拼接。
     如果是安卓平台，直接返回原始 Deeplink。
     """
+    print(f"处理 Deeplink: {deeplink}，平台: {platform}")
     if platform.lower() == "ios":
         # 对提取到的 Deeplink 进行 URL 编码并拼接
         encoded_deeplink = quote(deeplink)
