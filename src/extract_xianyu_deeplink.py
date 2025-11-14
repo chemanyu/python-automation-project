@@ -2,6 +2,9 @@ from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 import time
 import re
 import json
@@ -77,9 +80,14 @@ def get_xianyu_deeplink(short_url, driver=None, platform="android"):
         
         driver.get(short_url)
         
-        # 增加等待时间，让页面完全加载和尝试跳转
-        print("等待页面加载和跳转...")
-        time.sleep(3)
+        # 使用显式等待页面加载完成
+        print("等待页面加载...")
+        try:
+            WebDriverWait(driver, 5).until(
+                lambda d: d.execute_script('return document.readyState') == 'complete'
+            )
+        except TimeoutException:
+            print("页面加载等待超时，继续后续处理")
         
         current_url = driver.current_url
         print(f"当前 URL: {current_url}")
