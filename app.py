@@ -236,5 +236,86 @@ def extract_xianyu_link():
             'error': error_message
         }
 
+# 闲鱼批量转链
+@app.route('/xianyu/upload', methods=['POST'])
+def upload_and_extract_xianyu_file():
+    """处理上传文件并批量提取闲鱼短链接，结果以Excel文件下载。"""
+    if 'link_file' not in request.files:
+        print("Web Service: 没有选择文件")
+        return "没有选择文件", 400
+
+    file = request.files['link_file']
+    platform = request.form.get('platform', 'android').lower()
+
+    if file.filename == '':
+        print("Web Service: 文件名为空")
+        return "没有选择文件", 400
+
+    filepath = None
+    try:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        print(f"Web Service: 闲鱼文件已上传: {filepath}")
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            short_urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+        results_list = [None] * len(short_urls)
+        if not short_urls:
+            print("Web Service: 上传的文件为空或不包含有效链接")
+            return "上传的文件为空或不包含有效链接", 400
+
+        print(f"Web Service: 开始处理 {len(short_urls)} 个闲鱼链接...")
+        success_count = 0
+        fail_count = 0
+
+        def process_link(idx, url):
+            try:
+                deeplink = get_xianyu_deeplink(url, None, platform)
+                if deeplink:
+                    result = {'原始链接': url, 'Deeplink': deeplink, '状态': '成功'}
+                else:
+                    result = {'原始链接': url, 'Deeplink': '未提取到', '状态': '失败'}
+            except Exception as e:
+                result = {'原始链接': url, 'Deeplink': str(e), '状态': '错误'}
+            return (idx, result)
+
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = [executor.submit(process_link, idx, url) for idx, url in enumerate(short_urls)]
+            for future in as_completed(futures):
+                idx, res = future.result()
+                results_list[idx] = res
+                if res['状态'] == '成功':
+                    success_count += 1
+                else:
+                    fail_count += 1
+
+        print("Web Service: 闲鱼链接处理完成，生成Excel...")
+        df = pd.DataFrame(results_list)
+        excel_buffer = BytesIO()
+        df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+
+        output_filename = f"xianyu_deeplink_results_{os.path.splitext(filename)[0]}.xlsx"
+        print(f"Web Service: 准备发送文件: {output_filename}")
+        response = make_response(send_file(
+            excel_buffer,
+            as_attachment=True,
+            download_name=output_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ))
+        response.set_cookie('batch_stats', f'success={success_count};fail={fail_count}', max_age=60)
+        response.set_cookie('download_done', 'true', max_age=60, path='/')
+        return response
+
+    except Exception as e:
+        print(f"Web Service: 闲鱼批量转链发生错误: {e}")
+        return f"发生错误: {e}", 500
+    finally:
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+            print(f"Web Service: 已删除临时文件: {filepath}")
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

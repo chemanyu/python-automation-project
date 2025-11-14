@@ -399,30 +399,35 @@
         <!-- 闲鱼转链内容 -->
         <div id="xianyu-content" class="tab-content">
             <h2 style="color: #667eea; margin-bottom: 20px;">闲鱼链接转换</h2>
-            
             <!-- 平台选择 -->
             <div class="form-group">
                 <label>选择平台：</label>
                 <div class="platform-selector">
                     <label class="platform-option active">
-                        <input type="radio" name="platform" value="android" checked>
+                        <input type="radio" name="xianyu-platform" value="android" checked>
                         <div>📱 Android</div>
                     </label>
                     <label class="platform-option">
-                        <input type="radio" name="platform" value="ios">
+                        <input type="radio" name="xianyu-platform" value="ios">
                         <div>🍎 iOS</div>
                     </label>
                 </div>
             </div>
-            
-            <!-- 链接输入 -->
+            <!-- 单个链接输入 -->
             <div class="form-group">
                 <label for="xianyu-link">输入闲鱼短链接：</label>
                 <input type="text" id="xianyu-link" placeholder="例如: https://m.tb.cn/h.xxxxx">
             </div>
-            
             <button onclick="extractXianyu()">转换链接</button>
-            
+            <!-- 批量链接提取 -->
+            <div class="divider"></div>
+            <div class="form-group">
+                <h2 style="color: #667eea; margin-bottom: 20px;">批量链接提取（通过文件上传）</h2>
+                <label for="xianyu-file-input">上传文件（.txt）：</label>
+                <input type="file" id="xianyu-file-input" accept=".txt">
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">每行包含一个闲鱼短链接</p>
+            </div>
+            <button onclick="extractXianyuBatch()">上传并提取</button>
             <!-- 结果展示 -->
             <div id="xianyu-result" class="result-box">
                 <div class="result-title">✅ 转换结果</div>
@@ -629,7 +634,7 @@
         // 闲鱼转链
         async function extractXianyu() {
             const link = document.getElementById('xianyu-link').value.trim();
-            const platform = document.querySelector('input[name="platform"]:checked').value;
+            const platform = document.querySelector('input[name="xianyu-platform"]:checked').value;
             
             if (!link) {
                 alert('请输入闲鱼短链接');
@@ -694,6 +699,56 @@
             }).catch(err => {
                 alert('复制失败: ' + err);
             });
+        }
+        
+        // 闲鱼批量提取
+        async function extractXianyuBatch() {
+            console.log('闲鱼批量提取函数被调用');
+            const fileInput = document.getElementById('xianyu-file-input');
+            const platform = document.querySelector('input[name="xianyu-platform"]:checked').value;
+            console.log('选择的平台:', platform);
+            if (!fileInput.files.length) {
+                alert('请选择文件');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('link_file', fileInput.files[0]);
+            formData.append('platform', platform);
+            console.log('准备发送请求到: /xianyu/upload');
+            showLoading();
+            try {
+                const response = await fetch('/xianyu/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                console.log('收到响应:', response.status);
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text);
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'xianyu_deeplink_results.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                setTimeout(() => {
+                    const stats = getBatchStatsFromCookie();
+                    if (stats) {
+                        alert(`✅ 批量转链完成！\n成功: ${stats.success} 条\n失败: ${stats.fail} 条\n\n文件已下载到本地。`);
+                    } else {
+                        alert('✅ 批量转链完成！文件已下载');
+                    }
+                }, 500);
+            } catch (error) {
+                console.error('请求失败:', error);
+                alert('上传失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
         }
     </script>
 </body>
