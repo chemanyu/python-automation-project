@@ -1,4 +1,4 @@
-from seleniumwire import webdriver
+from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -43,25 +43,17 @@ def get_xianyu_deeplink(short_url, driver=None, platform="android"):
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument('log-level=3')
 
-        # Selenium Wire 配置
-        seleniumwire_options = {
-            'disable_capture': False,
-            'exclude_hosts': [],
-        }
-
         try:
             service = Service(CHROME_DRIVER_PATH)
             driver = webdriver.Chrome(
                 service=service, 
-                options=chrome_options,
-                seleniumwire_options=seleniumwire_options
+                options=chrome_options
             )
         except Exception as e:
             print(f"初始化 ChromeDriver 时出错: {e}")
             try:
                 driver = webdriver.Chrome(
-                    options=chrome_options,
-                    seleniumwire_options=seleniumwire_options
+                    options=chrome_options
                 )
             except Exception as e_path:
                 print(f"从 PATH 初始化 ChromeDriver 时出错: {e_path}")
