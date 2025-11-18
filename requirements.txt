@@ -1,5 +1,6 @@
 Flask
 selenium
+selenium-wire
 requests
 pandas
 openpyxl
