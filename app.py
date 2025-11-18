@@ -34,12 +34,12 @@ if not os.path.exists(UPLOAD_FOLDER):
 #    或者，更好的方式是确保 chromedriver.exe 所在目录已添加到 Windows 的系统 PATH 环境变量中，
 #    这样 Selenium 应该能自动找到它，此时 CHROME_DRIVER_PATH 可以为空字符串或脚本中的备用逻辑会生效。
 
-@app.route('/ulink/', methods=['GET'])
+@app.route('/', methods=['GET'])
 def index():
     """渲染统一首页，包含淘宝和闲鱼两个标签页。"""
     return render_template('home.html')
 
-@app.route('/ulink/extract', methods=['POST'])
+@app.route('/extract', methods=['POST'])
 def extract_single_link():
     """处理单个短链接的提取请求。"""
     short_url = request.form.get('short_url')
@@ -81,7 +81,7 @@ def extract_single_link():
         }
 
 
-@app.route('/ulink/upload', methods=['POST'])
+@app.route('/upload', methods=['POST'])
 def upload_and_extract_file():
     """处理上传文件并提取其中所有短链接的请求, 结果以Excel文件形式下载。"""
     if 'link_file' not in request.files:
@@ -201,7 +201,7 @@ def upload_and_extract_file():
 # ==================== 闲鱼转链功能 ====================
 
 
-@app.route('/ulink/xianyu/extract', methods=['POST'])
+@app.route('/xianyu/extract', methods=['POST'])
 def extract_xianyu_link():
     """处理单个闲鱼短链接的提取请求"""
     short_url = request.form.get('short_url')
@@ -237,7 +237,7 @@ def extract_xianyu_link():
         }
 
 # 闲鱼批量转链
-@app.route('/ulink/xianyu/upload', methods=['POST'])
+@app.route('/xianyu/upload', methods=['POST'])
 def upload_and_extract_xianyu_file():
     """处理上传文件并批量提取闲鱼短链接，结果以Excel文件下载。"""
     if 'link_file' not in request.files:
