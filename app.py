@@ -154,7 +154,7 @@ def upload_and_extract_file():
                 driver_queue.put(driver)
             return (idx, result)
 
-        with ThreadPoolExecutor(max_workers=6) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = [executor.submit(process_link, idx, url) for idx, url in enumerate(short_urls)]
             for future in as_completed(futures):
                 idx, res = future.result()
@@ -281,7 +281,7 @@ def upload_and_extract_xianyu_file():
                 result = {'原始链接': url, 'Deeplink': str(e), '状态': '错误'}
             return (idx, result)
 
-        with ThreadPoolExecutor(max_workers=6) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = [executor.submit(process_link, idx, url) for idx, url in enumerate(short_urls)]
             for future in as_completed(futures):
                 idx, res = future.result()
