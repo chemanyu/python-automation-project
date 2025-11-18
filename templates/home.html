@@ -514,7 +514,7 @@
             
             showLoading();
             try {
-                const response = await fetch('/extract', {
+                const response = await fetch('/ulink/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'short_url=' + encodeURIComponent(link)
@@ -565,7 +565,7 @@
             
             showLoading();
             try {
-                const response = await fetch('/upload', {
+                const response = await fetch('/ulink/upload', {
                     method: 'POST',
                     body: formData
                 });
@@ -643,7 +643,7 @@
             
             showLoading();
             try {
-                const response = await fetch('/xianyu/extract', {
+                const response = await fetch('/ulink/xianyu/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `short_url=${encodeURIComponent(link)}&platform=${platform}`
@@ -717,7 +717,7 @@
             console.log('准备发送请求到: /xianyu/upload');
             showLoading();
             try {
-                const response = await fetch('/xianyu/upload', {
+                const response = await fetch('/ulink/xianyu/upload', {
                     method: 'POST',
                     body: formData
                 });
