@@ -13,8 +13,8 @@ import requests # 导入 requests 包
 # 配置 ChromeDriver 路径 - 如果您的路径不同，请替换为您的 ChromeDriver 路径
 # 对于 Linux，常见路径是 /usr/bin/chromedriver 或 /usr/local/bin/chromedriver
 # 或者确保 chromedriver 在您的系统 PATH 环境变量中
-#CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
-CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
+CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
+#CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
 
 
 # 添加一个参数 platform，表示选择的系统（安卓或 iOS）
@@ -77,7 +77,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
                 #print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
-                return deeplink, process_deeplink(deeplink, platform)
+                return deeplink, process_deeplink(deeplink, platform, short_url)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
@@ -94,19 +94,41 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
     # 如果未找到 Deeplink，返回 None
     return None
 
-def process_deeplink(deeplink, platform):
+def process_deeplink(deeplink, platform, short_url=None):
     """
     根据平台处理 Deeplink。
+    如果提供了 short_url，则替换 deeplink 中的 h5Url 参数为 short_url 的 URL 编码值。
     如果是 iOS 平台，进行 URL 编码并拼接。
     如果是安卓平台，直接返回原始 Deeplink。
     """
     print(f"处理 Deeplink: {deeplink}，平台: {platform}")
+    
+    # 如果提供了 short_url，替换 deeplink 中的 h5Url 参数
+    if short_url:
+        try:
+            # 解析 deeplink 中的 URL 参数
+            parsed = urlparse(deeplink)
+            params = parse_qs(parsed.query)
+            
+            # 将 short_url 进行 URL 编码后替换 h5Url 参数
+            params['h5Url'] = [short_url]
+            
+            # 重新构建 query string
+            from urllib.parse import urlencode
+            new_query = urlencode(params, doseq=True)
+            
+            # 重新构建完整的 deeplink
+            deeplink = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
+            print(f"替换 h5Url 后的 Deeplink: {deeplink}")
+        except Exception as e:
+            print(f"替换 h5Url 时出错: {e}，使用原始 Deeplink")
+    
     if platform.lower() == "ios":
         # 对提取到的 Deeplink 进行 URL 编码并拼接
-        encoded_deeplink = quote(deeplink)
+        encoded_deeplink = quote(deeplink, safe='')
         final_url = f"https://ace.tb.cn/t?smburl={encoded_deeplink}"
-        #print(f"最终拼接的 URL: {final_url}")
+        print(f"最终拼接的 URL: {final_url}")
         return final_url
     else:
-        #print(f"安卓平台，返回原始 Deeplink: {deeplink}")
+        print(f"安卓平台，返回处理后的 Deeplink: {deeplink}")
         return deeplink
