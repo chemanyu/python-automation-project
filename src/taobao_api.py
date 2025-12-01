@@ -109,7 +109,7 @@ class TaobaoAPI:
         params['sign'] = self.generate_sign(params)
         
         # 打印请求 URL
-        print(f"请求 URL: {self.api_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}")
+        # print(f"请求 URL: {self.api_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}")
         
         # 发起请求
         try:
@@ -192,7 +192,7 @@ class TaobaoAPI:
         params['sign'] = self.generate_sign(params)
         
         # 打印请求 URL（用于调试）
-        print(f"请求 URL: {self.api_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}")
+        # print(f"请求 URL: {self.api_url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}")
         
         # 发起请求
         try:

@@ -14,6 +14,12 @@ from selenium.webdriver.chrome.options import Options
 # 从 src 模块导入 deeplink 提取函数
 from src.extract_taobao_deeplink import get_taobao_deeplink, CHROME_DRIVER_PATH
 from src.extract_xianyu_deeplink import get_xianyu_deeplink
+from src.taobao_api import TaobaoAPI
+
+# 淘宝客 API 配置
+TAOBAO_APP_KEY = '35238422'
+TAOBAO_APP_SECRET = '3e2c5266e7a3689ac909659a203ce301'  # 请替换为你的 AppSecret
+ACTIVITY_MATERIAL_ID = '20150318020010092'  # 活动素材ID
 
 app = Flask(__name__)
 
@@ -311,6 +317,199 @@ def upload_and_extract_xianyu_file():
 
     except Exception as e:
         print(f"Web Service: 闲鱼批量转链发生错误: {e}")
+        return f"发生错误: {e}", 500
+    finally:
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+            print(f"Web Service: 已删除临时文件: {filepath}")
+
+# ==================== 淘宝客活动短链批量获取 ====================
+
+@app.route('/taobao/activity/batch', methods=['POST'])
+def get_taobao_activity_batch():
+    """
+    批量获取淘宝客活动短链
+    上传文件格式：每行一个 sub_pid (mm_xxx_xxx_xxx)
+    """
+    if 'link_file' not in request.files:
+        print("Web Service: 没有选择文件")
+        return "没有选择文件", 400
+
+    file = request.files['link_file']
+
+    if file.filename == '':
+        print("Web Service: 文件名为空")
+        return "没有选择文件", 400
+
+    filepath = None
+    try:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        print(f"Web Service: 文件已上传: {filepath}")
+
+        # 读取文件中的 sub_pid 列表
+        with open(filepath, 'r', encoding='utf-8') as f:
+            sub_pids = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+        if not sub_pids:
+            print("Web Service: 上传的文件为空或不包含有效数据")
+            return "上传的文件为空或不包含有效数据", 400
+
+        print(f"Web Service: 开始处理 {len(sub_pids)} 个推广位...")
+        
+        # 创建淘宝客 API 实例
+        api = TaobaoAPI(TAOBAO_APP_KEY, TAOBAO_APP_SECRET)
+        
+        results_list = [None] * len(sub_pids)
+        success_count = 0
+        fail_count = 0
+
+        def process_sub_pid(idx, sub_pid):
+            try:
+                # 从 sub_pid (格式: mm_xxx_xxx_xxx) 中提取 adzone_id (最后一段)
+                parts = sub_pid.split('_')
+                if len(parts) < 4:
+                    return (idx, {
+                        '推广位': sub_pid,
+                        '会场名称': '格式错误',
+                        '推广长链': 'sub_pid格式不正确',
+                        '推广短链': 'sub_pid格式不正确',
+                        'Deeplink': '未获取',
+                        'h5Dp': '未获取',
+                        '状态': '失败'
+                    })
+                
+                adzone_id = parts[-1]  # 取最后一个下划线分隔的部分
+                
+                # 1. 获取活动信息
+                activity_info = api.get_activity_info(
+                    activity_material_id=ACTIVITY_MATERIAL_ID,
+                    adzone_id=adzone_id,
+                    sub_pid=sub_pid
+                )
+                
+                if not activity_info:
+                    return (idx, {
+                        '推广位': sub_pid,
+                        '会场名称': '获取失败',
+                        '推广长链': '获取失败',
+                        '推广短链': '获取失败',
+                        'Deeplink': '未获取',
+                        'h5Dp': '未获取',
+                        '状态': '失败'
+                    })
+                
+                # 2. 获取推广长链
+                click_url = activity_info.get('click_url')
+                page_name = activity_info.get('page_name', '未知活动')
+                
+                if not click_url:
+                    return (idx, {
+                        '推广位': sub_pid,
+                        '会场名称': page_name,
+                        '推广长链': '未获取到',
+                        '推广短链': '未获取到',
+                        'Deeplink': '未获取',
+                        'h5Dp': '未获取',
+                        '状态': '失败'
+                    })
+                
+                # 3. 转换为短链
+                short_result = api.convert_to_short_url(click_url)
+                
+                if short_result and len(short_result) > 0:
+                    short_url = short_result[0].get('content', '转换失败')
+                    err_msg = short_result[0].get('err_msg', '')
+                    
+                    if err_msg == 'OK':
+                        # 4. 使用推广短链调用 get_taobao_deeplink 获取 deeplink 和 h5Dp
+                        deeplink = ''
+                        h5_dp = ''
+                        try:
+                            deeplink, h5_dp = get_taobao_deeplink(short_url, None, 'ios')
+                            if not deeplink:
+                                deeplink = '未提取到'
+                            if not h5_dp:
+                                h5_dp = '未提取到'
+                        except Exception as e:
+                            print(f"调用 get_taobao_deeplink 失败: {e}")
+                            deeplink = '提取失败'
+                            h5_dp = '提取失败'
+                        
+                        return (idx, {
+                            '推广位': sub_pid,
+                            '会场名称': page_name,
+                            '推广长链': click_url,
+                            '推广短链': short_url,
+                            'Deeplink': deeplink,
+                            'h5Dp': h5_dp,
+                            '状态': '成功'
+                        })
+                    else:
+                        return (idx, {
+                            '推广位': sub_pid,
+                            '会场名称': page_name,
+                            '推广长链': click_url,
+                            '推广短链': f'转换失败: {err_msg}',
+                            'Deeplink': '未获取',
+                            'h5Dp': '未获取',
+                            '状态': '失败'
+                        })
+                else:
+                    return (idx, {
+                        '推广位': sub_pid,
+                        '会场名称': page_name,
+                        '推广长链': click_url,
+                        '推广短链': '转换失败',
+                        'Deeplink': '未获取',
+                        'h5Dp': '未获取',
+                        '状态': '失败'
+                    })
+                    
+            except Exception as e:
+                return (idx, {
+                    '推广位': sub_pid,
+                    '会场名称': '处理异常',
+                    '推广长链': str(e),
+                    '推广短链': '处理异常',
+                    'Deeplink': '处理异常',
+                    'h5Dp': '处理异常',
+                    '状态': '错误'
+                })
+
+        # 顺序处理每个推广位
+        for idx, sub_pid in enumerate(sub_pids):
+            idx, res = process_sub_pid(idx, sub_pid)
+            results_list[idx] = res
+            if res['状态'] == '成功':
+                success_count += 1
+            else:
+                fail_count += 1
+            print(f"Web Service: 处理进度 {success_count + fail_count}/{len(sub_pids)}")
+
+
+
+        print("Web Service: 处理完成，生成Excel...")
+        df = pd.DataFrame(results_list)
+        excel_buffer = BytesIO()
+        df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+
+        output_filename = f"taobao_activity_shortlinks_{os.path.splitext(filename)[0]}.xlsx"
+        print(f"Web Service: 准备发送文件: {output_filename}")
+        response = make_response(send_file(
+            excel_buffer,
+            as_attachment=True,
+            download_name=output_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ))
+        response.set_cookie('batch_stats', f'success={success_count};fail={fail_count}', max_age=60)
+        response.set_cookie('download_done', 'true', max_age=60, path='/')
+        return response
+
+    except Exception as e:
+        print(f"Web Service: 淘宝客活动短链批量获取发生错误: {e}")
         return f"发生错误: {e}", 500
     finally:
         if filepath and os.path.exists(filepath):

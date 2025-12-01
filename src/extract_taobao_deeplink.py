@@ -13,8 +13,8 @@ import requests # 导入 requests 包
 # 配置 ChromeDriver 路径 - 如果您的路径不同，请替换为您的 ChromeDriver 路径
 # 对于 Linux，常见路径是 /usr/bin/chromedriver 或 /usr/local/bin/chromedriver
 # 或者确保 chromedriver 在您的系统 PATH 环境变量中
-CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
-#CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
+#CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
+CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
 
 
 # 添加一个参数 platform，表示选择的系统（安卓或 iOS）
@@ -65,6 +65,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
 
         # 策略 2：查找 href 以 taobao:// 或 tbopen:// 开头的 <a> 标签
         # 使用显式等待页面加载完成，并等待目标 <a> 标签出现
+        time.sleep(1)  # 简单等待，确保页面开始加载
         try:
             WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//a[starts-with(@href, 'taobao://') or starts-with(@href, 'tbopen://')]") )
@@ -91,8 +92,8 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
             print("关闭内部创建的浏览器实例。") # 函数内部日志保持
             driver.quit()
 
-    # 如果未找到 Deeplink，返回 None
-    return None
+    # 如果未找到 Deeplink，返回 None, None (两个值)
+    return None, None
 
 def process_deeplink(deeplink, platform, short_url=None):
     """
@@ -101,7 +102,7 @@ def process_deeplink(deeplink, platform, short_url=None):
     如果是 iOS 平台，进行 URL 编码并拼接。
     如果是安卓平台，直接返回原始 Deeplink。
     """
-    print(f"处理 Deeplink: {deeplink}，平台: {platform}")
+    # print(f"处理 Deeplink: {deeplink}，平台: {platform}")
     
     # 如果提供了 short_url，替换 deeplink 中的 h5Url 参数
     if short_url:
