@@ -475,6 +475,58 @@ mm_874030133_3340450211_116193900323
                     </ul>
                 </div>
             </div>
+            
+            <div class="divider"></div>
+            
+            <!-- 淘宝客活动报表查询 -->
+            <h2 style="color: #667eea; margin-bottom: 20px;">📊 活动报表批量查询</h2>
+            <p style="color: #666; margin-bottom: 20px;">上传包含推广位（pid）的Excel文件，批量查询活动报表数据</p>
+            
+            <!-- 查询参数 -->
+            <div class="form-group">
+                <label for="report-biz-date">统计日期 (yyyyMMdd)：</label>
+                <input type="text" id="report-biz-date" placeholder="例如: 20241201" value="">
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">
+                    请输入要查询的日期，格式: yyyyMMdd
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label for="report-query-type">查询类型：</label>
+                <select id="report-query-type" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="1">1 - 预估</option>
+                    <option value="2" selected>2 - 结算</option>
+                </select>
+            </div>
+            
+            <!-- 文件上传 -->
+            <div class="form-group">
+                <label for="report-file-input">上传Excel文件（.xlsx或.xls）：</label>
+                <input type="file" id="report-file-input" accept=".xlsx,.xls">
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">
+                    Excel文件必须包含 'pid' 列
+                </p>
+            </div>
+            <button onclick="queryActivityReport()">批量查询报表</button>
+            
+            <!-- 结果展示 -->
+            <div id="report-result" class="result-box">
+                <div class="result-title">✅ 查询完成</div>
+                <div class="result-content" id="report-result-content">
+                    <p>Excel 文件已生成，包含以下信息：</p>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        <li>推广位 (pid)</li>
+                        <li>统计日期 (biz_date)</li>
+                        <li>符合奖励要求的累计用户数</li>
+                        <li>奖励金额</li>
+                        <li>人群1-5结算奖励uv</li>
+                        <li>账号总开奖率</li>
+                        <li>开奖率</li>
+                        <li>更新时间</li>
+                        <li>状态</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -845,6 +897,85 @@ mm_874030133_3340450211_116193900323
                 hideLoading();
             }
         }
+        
+        // 淘宝客活动报表批量查询
+        async function queryActivityReport() {
+            const fileInput = document.getElementById('report-file-input');
+            const bizDate = document.getElementById('report-biz-date').value.trim();
+            const queryType = document.getElementById('report-query-type').value;
+            const eventId = '3654363'; // 默认活动ID
+            
+            if (!bizDate) {
+                alert('请输入统计日期');
+                return;
+            }
+            
+            if (!/^\d{8}$/.test(bizDate)) {
+                alert('日期格式不正确，请使用 yyyyMMdd 格式，例如: 20241201');
+                return;
+            }
+            
+            if (!fileInput.files.length) {
+                alert('请选择Excel文件');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('link_file', fileInput.files[0]);
+            formData.append('biz_date', bizDate);
+            formData.append('query_type', queryType);
+            formData.append('event_id', eventId);
+            
+            console.log('准备发送请求到: /ulink/taobao/activity/report');
+            showLoading();
+            
+            try {
+                const response = await fetch('/ulink/taobao/activity/report', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('收到响应:', response.status);
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text);
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `taobao_activity_report_${bizDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                setTimeout(() => {
+                    const stats = getBatchStatsFromCookie();
+                    if (stats) {
+                        alert(`✅ 活动报表查询完成！\n成功: ${stats.success} 条\n失败: ${stats.fail} 条\n\n文件已下载到本地。`);
+                    } else {
+                        alert('✅ 活动报表查询完成！文件已下载');
+                    }
+                }, 500);
+            } catch (error) {
+                console.error('请求失败:', error);
+                alert('查询失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 页面加载时设置默认日期为昨天
+        window.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                           String(today.getMonth() + 1).padStart(2, '0') + 
+                           String(today.getDate()).padStart(2, '0');
+            document.getElementById('report-biz-date').value = dateStr;
+        });
     </script>
 </body>
 </html>

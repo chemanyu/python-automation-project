@@ -15,11 +15,13 @@ from selenium.webdriver.chrome.options import Options
 from src.extract_taobao_deeplink import get_taobao_deeplink, CHROME_DRIVER_PATH
 from src.extract_xianyu_deeplink import get_xianyu_deeplink
 from src.taobao_api import TaobaoAPI
+from src.taobao_activity_report import TaobaoActivityReportAPI
 
 # 淘宝客 API 配置
 TAOBAO_APP_KEY = '35238422'
 TAOBAO_APP_SECRET = '3e2c5266e7a3689ac909659a203ce301'  # 请替换为你的 AppSecret
 ACTIVITY_MATERIAL_ID = '20150318020010092'  # 活动素材ID
+DEFAULT_EVENT_ID = '3654363'  # CPA活动ID
 
 app = Flask(__name__)
 
@@ -510,6 +512,235 @@ def get_taobao_activity_batch():
 
     except Exception as e:
         print(f"Web Service: 淘宝客活动短链批量获取发生错误: {e}")
+        return f"发生错误: {e}", 500
+    finally:
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+            print(f"Web Service: 已删除临时文件: {filepath}")
+
+# ==================== 淘宝客活动报表批量查询 ====================
+
+@app.route('/taobao/activity/report', methods=['POST'])
+def get_taobao_activity_report():
+    """
+    批量查询淘宝客CPA活动报表
+    上传Excel文件格式：必须包含 'pid' 列
+    URL参数：
+        - biz_date: 日期(yyyyMMdd)，必填
+        - query_type: 查询类型，1-推广 2-拉新，默认1
+        - event_id: CPA活动ID，默认3654363
+    """
+    # 获取URL参数
+    biz_date = request.form.get('biz_date') or request.args.get('biz_date')
+    query_type_str = request.form.get('query_type') or request.args.get('query_type', '1')
+    event_id = DEFAULT_EVENT_ID
+    
+    if not biz_date:
+        return "biz_date参数必填 (格式: yyyyMMdd)", 400
+    
+    try:
+        query_type = int(query_type_str)
+    except ValueError:
+        query_type = 1
+    
+    # 检查上传文件
+    if 'link_file' not in request.files:
+        return "没有选择文件", 400
+    
+    file = request.files['link_file']
+    if file.filename == '':
+        return "没有选择文件", 400
+    
+    # 验证文件扩展名
+    if not (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+        return "只支持.xlsx和.xls文件", 400
+    
+    filepath = None
+    try:
+        # 保存上传的文件
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        print(f"Web Service: 活动报表文件已上传: {filepath}")
+        
+        # 读取Excel文件
+        df = pd.read_excel(filepath)
+        
+        # 检查是否有pid列
+        if 'pid' not in df.columns:
+            return "Excel文件必须包含 'pid' 列", 400
+        
+        # 提取pid列表
+        pids = df['pid'].dropna().astype(str).tolist()
+        
+        if not pids:
+            return "Excel文件中没有有效的pid数据", 400
+        
+        print(f"Web Service: 开始查询 {len(pids)} 个推广位的活动报表...")
+        
+        # 创建淘宝客活动报表API实例
+        api = TaobaoActivityReportAPI(TAOBAO_APP_KEY, TAOBAO_APP_SECRET)
+        
+        # 准备结果数据
+        results_list = []
+        success_count = 0
+        fail_count = 0
+        
+        # 顺序查询每个pid
+        for idx, pid in enumerate(pids, 1):
+            pid = pid.strip()
+            if not pid:
+                continue
+            
+            print(f"Web Service: 查询进度 {idx}/{len(pids)} - pid: {pid}")
+            
+            try:
+                # 调用API查询
+                result = api.get_activity_report(
+                    event_id=event_id,
+                    biz_date=biz_date,
+                    query_type=query_type,
+                    pid=pid
+                )
+                
+                if result and result['data']:
+                    # 有数据
+                    for item in result['data']:
+                        ext = item['ext_info_parsed']
+                        # 根据 query_type 设置不同的列名
+                        if query_type == 1:
+                            # 预估数据
+                            results_list.append({
+                                'pid': item['pid'],
+                                'biz_date': item['biz_date'],
+                                '符合奖励要求的累计用户数': item['union_30d_lx_uv'],
+                                '奖励金额': item['reward_amount'],
+                                '人群1预估奖励uv': ext['crowd1_reward_uv'],
+                                '人群2预估奖励uv': ext['crowd2_reward_uv'],
+                                '人群3预估奖励uv': ext['crowd3_reward_uv'],
+                                '人群4预估奖励uv': ext['crowd4_reward_uv'],
+                                '人群5预估奖励uv': ext['crowd5_reward_uv'],
+                                '账号总开奖率': ext['account_draw_rate'],
+                                '开奖率': ext['draw_rate'],
+                                '更新时间': ext['update_time'],
+                                '状态': '成功'
+                            })
+                        else:
+                            # 结算数据
+                            results_list.append({
+                                'pid': item['pid'],
+                                'biz_date': item['biz_date'],
+                                '符合奖励要求的累计用户数': item['union_30d_lx_uv'],
+                                '奖励金额': item['reward_amount'],
+                                '人群1结算奖励uv': ext['crowd1_reward_uv'],
+                                '人群2结算奖励uv': ext['crowd2_reward_uv'],
+                                '人群3结算奖励uv': ext['crowd3_reward_uv'],
+                                '人群4结算奖励uv': ext['crowd4_reward_uv'],
+                                '人群5结算奖励uv': ext['crowd5_reward_uv'],
+                                '账号总开奖率': ext['account_draw_rate'],
+                                '开奖率': ext['draw_rate'],
+                                '更新时间': ext['update_time'],
+                                '状态': '成功'
+                            })
+                    success_count += 1
+                else:
+                    # 无数据
+                    if query_type == 1:
+                        results_list.append({
+                            'pid': pid,
+                            'biz_date': biz_date,
+                            '符合奖励要求的累计用户数': 'No data',
+                            '奖励金额': '',
+                            '人群1预估奖励uv': '',
+                            '人群2预估奖励uv': '',
+                            '人群3预估奖励uv': '',
+                            '人群4预估奖励uv': '',
+                            '人群5预估奖励uv': '',
+                            '账号总开奖率': '',
+                            '开奖率': '',
+                            '更新时间': '',
+                            '状态': '无数据'
+                        })
+                    else:
+                        results_list.append({
+                            'pid': pid,
+                            'biz_date': biz_date,
+                            '符合奖励要求的累计用户数': 'No data',
+                            '奖励金额': '',
+                            '人群1结算奖励uv': '',
+                            '人群2结算奖励uv': '',
+                            '人群3结算奖励uv': '',
+                            '人群4结算奖励uv': '',
+                            '人群5结算奖励uv': '',
+                            '账号总开奖率': '',
+                            '开奖率': '',
+                            '更新时间': '',
+                            '状态': '无数据'
+                        })
+                    fail_count += 1
+                    
+            except Exception as e:
+                # 查询失败
+                print(f"Web Service: 查询pid {pid} 失败: {e}")
+                if query_type == 1:
+                    results_list.append({
+                        'pid': pid,
+                        'biz_date': biz_date,
+                        '符合奖励要求的累计用户数': f'Error: {str(e)}',
+                        '奖励金额': '',
+                        '人群1预估奖励uv': '',
+                        '人群2预估奖励uv': '',
+                        '人群3预估奖励uv': '',
+                        '人群4预估奖励uv': '',
+                        '人群5预估奖励uv': '',
+                        '账号总开奖率': '',
+                        '开奖率': '',
+                        '更新时间': '',
+                        '状态': '失败'
+                    })
+                else:
+                    results_list.append({
+                        'pid': pid,
+                        'biz_date': biz_date,
+                        '符合奖励要求的累计用户数': f'Error: {str(e)}',
+                        '奖励金额': '',
+                        '人群1结算奖励uv': '',
+                        '人群2结算奖励uv': '',
+                        '人群3结算奖励uv': '',
+                        '人群4结算奖励uv': '',
+                        '人群5结算奖励uv': '',
+                        '账号总开奖率': '',
+                        '开奖率': '',
+                        '更新时间': '',
+                        '状态': '失败'
+                    })
+                fail_count += 1
+        
+        print("Web Service: 查询完成，生成Excel...")
+        
+        # 生成Excel
+        result_df = pd.DataFrame(results_list)
+        excel_buffer = BytesIO()
+        result_df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+        
+        output_filename = f"taobao_activity_report_{biz_date}.xlsx"
+        print(f"Web Service: 准备发送文件: {output_filename}")
+        
+        response = make_response(send_file(
+            excel_buffer,
+            as_attachment=True,
+            download_name=output_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ))
+        response.set_cookie('batch_stats', f'success={success_count};fail={fail_count}', max_age=60)
+        response.set_cookie('download_done', 'true', max_age=60, path='/')
+        return response
+        
+    except Exception as e:
+        print(f"Web Service: 淘宝客活动报表查询发生错误: {e}")
+        import traceback
+        traceback.print_exc()
         return f"发生错误: {e}", 500
     finally:
         if filepath and os.path.exists(filepath):
