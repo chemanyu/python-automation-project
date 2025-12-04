@@ -520,7 +520,7 @@ def get_taobao_activity_batch():
 
 # ==================== 淘宝客活动报表批量查询 ====================
 
-@app.route('/ulink/taobao/activity/report', methods=['POST'])
+@app.route('/taobao/activity/report', methods=['POST'])
 def get_taobao_activity_report():
     """
     批量查询淘宝客CPA活动报表
