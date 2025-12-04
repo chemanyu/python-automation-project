@@ -520,7 +520,7 @@ def get_taobao_activity_batch():
 
 # ==================== 淘宝客活动报表批量查询 ====================
 
-@app.route('/taobao/activity/report', methods=['POST'])
+@app.route('/ulink/taobao/activity/report', methods=['POST'])
 def get_taobao_activity_report():
     """
     批量查询淘宝客CPA活动报表
@@ -586,6 +586,14 @@ def get_taobao_activity_report():
         success_count = 0
         fail_count = 0
         
+        # 计算前一天日期
+        from datetime import datetime, timedelta
+        current_date = datetime.strptime(biz_date, '%Y%m%d')
+        previous_date = current_date - timedelta(days=1)
+        previous_biz_date = previous_date.strftime('%Y%m%d')
+        
+        print(f"Web Service: 当前日期: {biz_date}, 前一天日期: {previous_biz_date}")
+        
         # 顺序查询每个pid
         for idx, pid in enumerate(pids, 1):
             pid = pid.strip()
@@ -595,53 +603,147 @@ def get_taobao_activity_report():
             print(f"Web Service: 查询进度 {idx}/{len(pids)} - pid: {pid}")
             
             try:
-                # 调用API查询
-                result = api.get_activity_report(
+                # 查询当前日期数据
+                result_current = api.get_activity_report(
                     event_id=event_id,
                     biz_date=biz_date,
                     query_type=query_type,
                     pid=pid
                 )
                 
-                if result and result['data']:
-                    # 有数据
-                    for item in result['data']:
-                        ext = item['ext_info_parsed']
-                        # 根据 query_type 设置不同的列名
-                        if query_type == 1:
-                            # 预估数据
-                            results_list.append({
-                                'pid': item['pid'],
-                                'biz_date': item['biz_date'],
-                                '符合奖励要求的累计用户数': item['union_30d_lx_uv'],
-                                '奖励金额': item['reward_amount'],
-                                '人群1预估奖励uv': ext['crowd1_reward_uv'],
-                                '人群2预估奖励uv': ext['crowd2_reward_uv'],
-                                '人群3预估奖励uv': ext['crowd3_reward_uv'],
-                                '人群4预估奖励uv': ext['crowd4_reward_uv'],
-                                '人群5预估奖励uv': ext['crowd5_reward_uv'],
-                                '账号总开奖率': ext['account_draw_rate'],
-                                '开奖率': ext['draw_rate'],
-                                '更新时间': ext['update_time'],
-                                '状态': '成功'
-                            })
-                        else:
-                            # 结算数据
-                            results_list.append({
-                                'pid': item['pid'],
-                                'biz_date': item['biz_date'],
-                                '符合奖励要求的累计用户数': item['union_30d_lx_uv'],
-                                '奖励金额': item['reward_amount'],
-                                '人群1结算奖励uv': ext['crowd1_reward_uv'],
-                                '人群2结算奖励uv': ext['crowd2_reward_uv'],
-                                '人群3结算奖励uv': ext['crowd3_reward_uv'],
-                                '人群4结算奖励uv': ext['crowd4_reward_uv'],
-                                '人群5结算奖励uv': ext['crowd5_reward_uv'],
-                                '账号总开奖率': ext['account_draw_rate'],
-                                '开奖率': ext['draw_rate'],
-                                '更新时间': ext['update_time'],
-                                '状态': '成功'
-                            })
+                # 查询前一天日期数据
+                result_previous = api.get_activity_report(
+                    event_id=event_id,
+                    biz_date=previous_biz_date,
+                    query_type=query_type,
+                    pid=pid
+                )
+                
+                # 提取数据
+                current_data = None
+                previous_data = None
+                
+                if result_current and result_current['data'] and len(result_current['data']) > 0:
+                    current_data = result_current['data'][0]
+                
+                if result_previous and result_previous['data'] and len(result_previous['data']) > 0:
+                    previous_data = result_previous['data'][0]
+                
+                if current_data:
+                    # 有当前日期数据
+                    current_ext = current_data['ext_info_parsed']
+                    
+                    # 如果有前一天数据，计算差值
+                    if previous_data:
+                        previous_ext = previous_data['ext_info_parsed']
+                        
+                        # 计算数值差值（需要处理空字符串和非数值的情况）
+                        def safe_subtract(current_val, previous_val):
+                            """安全减法，处理各种数据类型"""
+                            try:
+                                # 尝试转换为数值
+                                if isinstance(current_val, str):
+                                    current_val = current_val.strip()
+                                    if not current_val or current_val == '':
+                                        current_val = 0
+                                    else:
+                                        current_val = float(current_val)
+                                else:
+                                    current_val = float(current_val) if current_val else 0
+                                
+                                if isinstance(previous_val, str):
+                                    previous_val = previous_val.strip()
+                                    if not previous_val or previous_val == '':
+                                        previous_val = 0
+                                    else:
+                                        previous_val = float(previous_val)
+                                else:
+                                    previous_val = float(previous_val) if previous_val else 0
+                                
+                                diff = current_val - previous_val
+                                # 如果差值是整数，返回整数，否则保留小数
+                                return int(diff) if diff == int(diff) else round(diff, 2)
+                            except (ValueError, TypeError):
+                                return current_val
+                        
+                        # 计算各字段差值
+                        union_30d_lx_uv_diff = safe_subtract(
+                            current_data['union_30d_lx_uv'],
+                            previous_data['union_30d_lx_uv']
+                        )
+                        reward_amount_diff = safe_subtract(
+                            current_data['reward_amount'],
+                            previous_data['reward_amount']
+                        )
+                        crowd1_diff = safe_subtract(
+                            current_ext['crowd1_reward_uv'],
+                            previous_ext['crowd1_reward_uv']
+                        )
+                        crowd2_diff = safe_subtract(
+                            current_ext['crowd2_reward_uv'],
+                            previous_ext['crowd2_reward_uv']
+                        )
+                        crowd3_diff = safe_subtract(
+                            current_ext['crowd3_reward_uv'],
+                            previous_ext['crowd3_reward_uv']
+                        )
+                        crowd4_diff = safe_subtract(
+                            current_ext['crowd4_reward_uv'],
+                            previous_ext['crowd4_reward_uv']
+                        )
+                        crowd5_diff = safe_subtract(
+                            current_ext['crowd5_reward_uv'],
+                            previous_ext['crowd5_reward_uv']
+                        )
+                        account_draw_rate_diff =  current_ext['account_draw_rate']
+                        draw_rate_diff =  current_ext['draw_rate']
+                    else:
+                        # 没有前一天数据，差值等于当前值
+                        union_30d_lx_uv_diff = current_data['union_30d_lx_uv']
+                        reward_amount_diff = current_data['reward_amount']
+                        crowd1_diff = current_ext['crowd1_reward_uv']
+                        crowd2_diff = current_ext['crowd2_reward_uv']
+                        crowd3_diff = current_ext['crowd3_reward_uv']
+                        crowd4_diff = current_ext['crowd4_reward_uv']
+                        crowd5_diff = current_ext['crowd5_reward_uv']
+                        account_draw_rate_diff = current_ext['account_draw_rate']
+                        draw_rate_diff = current_ext['draw_rate']
+                    
+                    # 根据 query_type 设置不同的列名
+                    if query_type == 1:
+                        # 预估数据
+                        results_list.append({
+                            'pid': current_data['pid'],
+                            'biz_date': current_data['biz_date'],
+                            '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                            '奖励金额': reward_amount_diff,
+                            '人群1预估奖励uv': crowd1_diff,
+                            '人群2预估奖励uv': crowd2_diff,
+                            '人群3预估奖励uv': crowd3_diff,
+                            '人群4预估奖励uv': crowd4_diff,
+                            '人群5预估奖励uv': crowd5_diff,
+                            '账号总开奖率': account_draw_rate_diff,
+                            '开奖率': draw_rate_diff,
+                            '更新时间': current_ext['update_time'],
+                            '状态': '成功'
+                        })
+                    else:
+                        # 结算数据
+                        results_list.append({
+                            'pid': current_data['pid'],
+                            'biz_date': current_data['biz_date'],
+                            '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                            '奖励金额': reward_amount_diff,
+                            '人群1结算奖励uv': crowd1_diff,
+                            '人群2结算奖励uv': crowd2_diff,
+                            '人群3结算奖励uv': crowd3_diff,
+                            '人群4结算奖励uv': crowd4_diff,
+                            '人群5结算奖励uv': crowd5_diff,
+                            '账号总开奖率': account_draw_rate_diff,
+                            '开奖率': draw_rate_diff,
+                            '更新时间': current_ext['update_time'],
+                            '状态': '成功'
+                        })
                     success_count += 1
                 else:
                     # 无数据
