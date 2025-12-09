@@ -71,7 +71,7 @@ class TaobaoActivityReportAPI:
         获取淘宝客CPA活动报表数据
         
         Args:
-            event_id: CPA活动id，必填
+            event_id: CPA活动id，必填 (3654363-福利购, 3718079-超级红包)
             biz_date: 日期(yyyyMMdd)，必填
             query_type: 查询类型，1-推广 2-拉新，必填
             pid: 推广位id，可选
@@ -80,8 +80,10 @@ class TaobaoActivityReportAPI:
             
         Returns:
             返回结果字典，包含报表数据列表，失败返回 None
+            福利购 (3654363):
             {
                 'request_id': '请求ID',
+                'event_id': '活动ID',
                 'data': [
                     {
                         'pid': '推广位id',
@@ -97,6 +99,28 @@ class TaobaoActivityReportAPI:
                             'crowd4_reward_uv': '人群4结算奖励uv',
                             'crowd5_reward_uv': '人群5结算奖励uv',
                             'account_draw_rate': '账号总开奖率',
+                            'draw_rate': '开奖率',
+                            'update_time': '更新时间'
+                        }
+                    }
+                ]
+            }
+            超级红包 (3718079):
+            {
+                'request_id': '请求ID',
+                'event_id': '活动ID',
+                'data': [
+                    {
+                        'pid': '推广位id',
+                        'biz_date': '统计日期',
+                        'union_30d_lx_uv': '近30天拉新奖励计算用户量',
+                        'reward_amount': '奖励金额',
+                        'query_type': '查询类型',
+                        'ext_info': '活动扩展信息(JSON字符串)',
+                        'ext_info_parsed': {
+                            'user_quality_level': '用户质量等级',
+                            'account_draw_rate': '账号总开奖率',
+                            'settlement_reward_uv': '结算奖励uv',
                             'draw_rate': '开奖率',
                             'update_time': '更新时间'
                         }
@@ -171,13 +195,14 @@ class TaobaoActivityReportAPI:
                         'ext_info': dto.get('ext_info', ''),
                     }
                     
-                    # 解析ext_info
-                    item['ext_info_parsed'] = self._parse_ext_info(item['ext_info'])
+                    # 解析ext_info，传入event_id以便识别活动类型
+                    item['ext_info_parsed'] = self._parse_ext_info(item['ext_info'], event_id)
                     
                     data_list.append(item)
             
             return {
                 'request_id': request_id,
+                'event_id': event_id,
                 'data': data_list
             }
             
@@ -188,49 +213,86 @@ class TaobaoActivityReportAPI:
             print(f"处理响应时出错: {e}")
             return None
     
-    def _parse_ext_info(self, ext_info_str: str) -> Dict:
+    def _parse_ext_info(self, ext_info_str: str, event_id: str = '3654363') -> Dict:
         """
         解析ext_info JSON字符串
-        兼容预估数据(query_type=1)和结算数据(query_type=2)
+        支持不同活动类型：
+        - 3654363: 福利购 (预估数据和结算数据)
+        - 3718079: 超级红包 (新字段结构)
         
         Args:
             ext_info_str: ext_info JSON字符串
+            event_id: 活动ID，用于判断解析逻辑
             
         Returns:
             解析后的字典
         """
-        result = {
-            'crowd1_reward_uv': '',
-            'crowd2_reward_uv': '',
-            'crowd3_reward_uv': '',
-            'crowd4_reward_uv': '',
-            'crowd5_reward_uv': '',
-            'account_draw_rate': 0.0,
-            'draw_rate': 0.0,
-            'update_time': ''
-        }
-        
-        if not ext_info_str:
+        # 福利购活动 (3654363)
+        if event_id == '3654363':
+            result = {
+                'crowd1_reward_uv': '',
+                'crowd2_reward_uv': '',
+                'crowd3_reward_uv': '',
+                'crowd4_reward_uv': '',
+                'crowd5_reward_uv': '',
+                'account_draw_rate': 0.0,
+                'draw_rate': 0.0,
+                'update_time': ''
+            }
+            
+            if not ext_info_str:
+                return result
+            
+            try:
+                ext_data = json.loads(ext_info_str)
+                
+                # 提取各个字段 - 兼容预估和结算两种格式
+                # 预估数据使用"人群X预估奖励uv"，结算数据使用"人群X结算奖励uv"
+                result['crowd1_reward_uv'] = ext_data.get('人群1结算奖励uv') or ext_data.get('人群1预估奖励uv', '')
+                result['crowd2_reward_uv'] = ext_data.get('人群2结算奖励uv') or ext_data.get('人群2预估奖励uv', '')
+                result['crowd3_reward_uv'] = ext_data.get('人群3结算奖励uv') or ext_data.get('人群3预估奖励uv', '')
+                result['crowd4_reward_uv'] = ext_data.get('人群4结算奖励uv') or ext_data.get('人群4预估奖励uv', '')
+                result['crowd5_reward_uv'] = ext_data.get('人群5结算奖励uv') or ext_data.get('人群5预估奖励uv', '')
+                result['account_draw_rate'] = ext_data.get('账号总开奖率（奖励计算用)', 0.0)
+                result['draw_rate'] = ext_data.get('开奖率', 0.0)
+                result['update_time'] = ext_data.get('更新时间', '')
+                
+            except json.JSONDecodeError as e:
+                print(f"解析ext_info失败: {e}")
+            
             return result
         
-        try:
-            ext_data = json.loads(ext_info_str)
+        # 超级红包活动 (3718079)
+        elif event_id == '3718079':
+            result = {
+                'user_quality_level': '',
+                'account_draw_rate': 0.0,
+                'settlement_reward_uv': '',
+                'draw_rate': 0.0,
+                'update_time': ''
+            }
             
-            # 提取各个字段 - 兼容预估和结算两种格式
-            # 预估数据使用"人群X预估奖励uv"，结算数据使用"人群X结算奖励uv"
-            result['crowd1_reward_uv'] = ext_data.get('人群1结算奖励uv') or ext_data.get('人群1预估奖励uv', '')
-            result['crowd2_reward_uv'] = ext_data.get('人群2结算奖励uv') or ext_data.get('人群2预估奖励uv', '')
-            result['crowd3_reward_uv'] = ext_data.get('人群3结算奖励uv') or ext_data.get('人群3预估奖励uv', '')
-            result['crowd4_reward_uv'] = ext_data.get('人群4结算奖励uv') or ext_data.get('人群4预估奖励uv', '')
-            result['crowd5_reward_uv'] = ext_data.get('人群5结算奖励uv') or ext_data.get('人群5预估奖励uv', '')
-            result['account_draw_rate'] = ext_data.get('账号总开奖率（奖励计算用)', 0.0)
-            result['draw_rate'] = ext_data.get('开奖率', 0.0)
-            result['update_time'] = ext_data.get('更新时间', '')
+            if not ext_info_str:
+                return result
             
-        except json.JSONDecodeError as e:
-            print(f"解析ext_info失败: {e}")
+            try:
+                ext_data = json.loads(ext_info_str)
+                
+                # 超级红包的字段结构
+                result['user_quality_level'] = ext_data.get('用户质量等级', '')
+                result['account_draw_rate'] = ext_data.get('账号总开奖率（奖励计算用)', 0.0)
+                result['settlement_reward_uv'] = ext_data.get('结算奖励uv') or ext_data.get('预估奖励uv', '')
+                result['draw_rate'] = ext_data.get('开奖率', 0.0)
+                result['update_time'] = ext_data.get('更新时间', '')
+                
+            except json.JSONDecodeError as e:
+                print(f"解析ext_info失败: {e}")
+            
+            return result
         
-        return result
+        # 默认返回空字典（未知活动类型）
+        else:
+            return {}
     
     def _build_query_string(self, params: Dict[str, str]) -> str:
         """构建查询字符串（用于调试）"""

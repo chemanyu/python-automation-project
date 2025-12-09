@@ -484,6 +484,14 @@ mm_874030133_3340450211_116193900323
             
             <!-- 查询参数 -->
             <div class="form-group">
+                <label for="report-event-type">活动类型：</label>
+                <select id="report-event-type" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                    <option value="3654363" selected>福利购</option>
+                    <option value="3718079">超级红包</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label for="report-biz-date">统计日期 (yyyyMMdd)：</label>
                 <input type="text" id="report-biz-date" placeholder="例如: 20241201" value="">
                 <p style="color: #999; font-size: 12px; margin-top: 8px;">
@@ -903,7 +911,7 @@ mm_874030133_3340450211_116193900323
             const fileInput = document.getElementById('report-file-input');
             const bizDate = document.getElementById('report-biz-date').value.trim();
             const queryType = document.getElementById('report-query-type').value;
-            const eventId = '3654363'; // 默认活动ID
+            const eventId = document.getElementById('report-event-type').value; // 从下拉框获取活动ID
             
             if (!bizDate) {
                 alert('请输入统计日期');

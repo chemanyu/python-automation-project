@@ -520,7 +520,7 @@ def get_taobao_activity_batch():
 
 # ==================== 淘宝客活动报表批量查询 ====================
 
-@app.route('/taobao/activity/report', methods=['POST'])
+@app.route('/ulink/taobao/activity/report', methods=['POST'])
 def get_taobao_activity_report():
     """
     批量查询淘宝客CPA活动报表
@@ -528,12 +528,12 @@ def get_taobao_activity_report():
     URL参数：
         - biz_date: 日期(yyyyMMdd)，必填
         - query_type: 查询类型，1-推广 2-拉新，默认1
-        - event_id: CPA活动ID，默认3654363
+        - event_id: CPA活动ID，默认3654363（福利购），可选3718079（超级红包）
     """
     # 获取URL参数
     biz_date = request.form.get('biz_date') or request.args.get('biz_date')
     query_type_str = request.form.get('query_type') or request.args.get('query_type', '1')
-    event_id = DEFAULT_EVENT_ID
+    event_id = request.form.get('event_id') or request.args.get('event_id', DEFAULT_EVENT_ID)
     
     if not biz_date:
         return "biz_date参数必填 (格式: yyyyMMdd)", 400
@@ -629,129 +629,219 @@ def get_taobao_activity_report():
                 if result_previous and result_previous['data'] and len(result_previous['data']) > 0:
                     previous_data = result_previous['data'][0]
                 
+                # 定义安全减法函数
+                def safe_subtract(current_val, previous_val):
+                    """安全减法，处理各种数据类型"""
+                    try:
+                        if isinstance(current_val, str):
+                            current_val = current_val.strip()
+                            if not current_val or current_val == '':
+                                current_val = 0
+                            else:
+                                current_val = float(current_val)
+                        else:
+                            current_val = float(current_val) if current_val else 0
+                        
+                        if isinstance(previous_val, str):
+                            previous_val = previous_val.strip()
+                            if not previous_val or previous_val == '':
+                                previous_val = 0
+                            else:
+                                previous_val = float(previous_val)
+                        else:
+                            previous_val = float(previous_val) if previous_val else 0
+                        
+                        diff = current_val - previous_val
+                        return int(diff) if diff == int(diff) else round(diff, 2)
+                    except (ValueError, TypeError):
+                        return current_val
+                
                 if current_data:
                     # 有当前日期数据
                     current_ext = current_data['ext_info_parsed']
+                    previous_ext = previous_data['ext_info_parsed'] if previous_data else {}
                     
-                    # 如果有前一天数据，计算差值
-                    if previous_data:
-                        previous_ext = previous_data['ext_info_parsed']
-                        
-                        # 计算数值差值（需要处理空字符串和非数值的情况）
-                        def safe_subtract(current_val, previous_val):
-                            """安全减法，处理各种数据类型"""
-                            try:
-                                # 尝试转换为数值
-                                if isinstance(current_val, str):
-                                    current_val = current_val.strip()
-                                    if not current_val or current_val == '':
-                                        current_val = 0
-                                    else:
-                                        current_val = float(current_val)
-                                else:
-                                    current_val = float(current_val) if current_val else 0
-                                
-                                if isinstance(previous_val, str):
-                                    previous_val = previous_val.strip()
-                                    if not previous_val or previous_val == '':
-                                        previous_val = 0
-                                    else:
-                                        previous_val = float(previous_val)
-                                else:
-                                    previous_val = float(previous_val) if previous_val else 0
-                                
-                                diff = current_val - previous_val
-                                # 如果差值是整数，返回整数，否则保留小数
-                                return int(diff) if diff == int(diff) else round(diff, 2)
-                            except (ValueError, TypeError):
-                                return current_val
-                        
-                        # 计算各字段差值
-                        union_30d_lx_uv_diff = safe_subtract(
-                            current_data['union_30d_lx_uv'],
-                            previous_data['union_30d_lx_uv']
-                        )
-                        reward_amount_diff = safe_subtract(
-                            current_data['reward_amount'],
-                            previous_data['reward_amount']
-                        )
+                    # 计算基础字段差值
+                    union_30d_lx_uv_diff = safe_subtract(
+                        current_data['union_30d_lx_uv'],
+                        previous_data['union_30d_lx_uv'] if previous_data else 0
+                    )
+                    reward_amount_diff = safe_subtract(
+                        current_data['reward_amount'],
+                        previous_data['reward_amount'] if previous_data else 0
+                    )
+                    
+                    # 根据活动类型处理不同的字段
+                    if event_id == '3654363':
+                        # 福利购活动
                         crowd1_diff = safe_subtract(
-                            current_ext['crowd1_reward_uv'],
-                            previous_ext['crowd1_reward_uv']
+                            current_ext.get('crowd1_reward_uv', ''),
+                            previous_ext.get('crowd1_reward_uv', '') if previous_data else 0
                         )
                         crowd2_diff = safe_subtract(
-                            current_ext['crowd2_reward_uv'],
-                            previous_ext['crowd2_reward_uv']
+                            current_ext.get('crowd2_reward_uv', ''),
+                            previous_ext.get('crowd2_reward_uv', '') if previous_data else 0
                         )
                         crowd3_diff = safe_subtract(
-                            current_ext['crowd3_reward_uv'],
-                            previous_ext['crowd3_reward_uv']
+                            current_ext.get('crowd3_reward_uv', ''),
+                            previous_ext.get('crowd3_reward_uv', '') if previous_data else 0
                         )
                         crowd4_diff = safe_subtract(
-                            current_ext['crowd4_reward_uv'],
-                            previous_ext['crowd4_reward_uv']
+                            current_ext.get('crowd4_reward_uv', ''),
+                            previous_ext.get('crowd4_reward_uv', '') if previous_data else 0
                         )
                         crowd5_diff = safe_subtract(
-                            current_ext['crowd5_reward_uv'],
-                            previous_ext['crowd5_reward_uv']
+                            current_ext.get('crowd5_reward_uv', ''),
+                            previous_ext.get('crowd5_reward_uv', '') if previous_data else 0
                         )
-                        account_draw_rate_diff =  current_ext['account_draw_rate']
-                        draw_rate_diff =  current_ext['draw_rate']
-                    else:
-                        # 没有前一天数据，差值等于当前值
-                        union_30d_lx_uv_diff = current_data['union_30d_lx_uv']
-                        reward_amount_diff = current_data['reward_amount']
-                        crowd1_diff = current_ext['crowd1_reward_uv']
-                        crowd2_diff = current_ext['crowd2_reward_uv']
-                        crowd3_diff = current_ext['crowd3_reward_uv']
-                        crowd4_diff = current_ext['crowd4_reward_uv']
-                        crowd5_diff = current_ext['crowd5_reward_uv']
-                        account_draw_rate_diff = current_ext['account_draw_rate']
-                        draw_rate_diff = current_ext['draw_rate']
+                        
+                        # 根据 query_type 设置不同的列名
+                        if query_type == 1:
+                            results_list.append({
+                                'pid': current_data['pid'],
+                                'biz_date': current_data['biz_date'],
+                                '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                                '奖励金额': reward_amount_diff,
+                                '人群1预估奖励uv': crowd1_diff,
+                                '人群2预估奖励uv': crowd2_diff,
+                                '人群3预估奖励uv': crowd3_diff,
+                                '人群4预估奖励uv': crowd4_diff,
+                                '人群5预估奖励uv': crowd5_diff,
+                                '账号总开奖率': current_ext.get('account_draw_rate', 0),
+                                '开奖率': current_ext.get('draw_rate', 0),
+                                '更新时间': current_ext.get('update_time', ''),
+                                '状态': '成功'
+                            })
+                        else:
+                            results_list.append({
+                                'pid': current_data['pid'],
+                                'biz_date': current_data['biz_date'],
+                                '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                                '奖励金额': reward_amount_diff,
+                                '人群1结算奖励uv': crowd1_diff,
+                                '人群2结算奖励uv': crowd2_diff,
+                                '人群3结算奖励uv': crowd3_diff,
+                                '人群4结算奖励uv': crowd4_diff,
+                                '人群5结算奖励uv': crowd5_diff,
+                                '账号总开奖率': current_ext.get('account_draw_rate', 0),
+                                '开奖率': current_ext.get('draw_rate', 0),
+                                '更新时间': current_ext.get('update_time', ''),
+                                '状态': '成功'
+                            })
                     
-                    # 根据 query_type 设置不同的列名
-                    if query_type == 1:
-                        # 预估数据
-                        results_list.append({
-                            'pid': current_data['pid'],
-                            'biz_date': current_data['biz_date'],
-                            '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
-                            '奖励金额': reward_amount_diff,
-                            '人群1预估奖励uv': crowd1_diff,
-                            '人群2预估奖励uv': crowd2_diff,
-                            '人群3预估奖励uv': crowd3_diff,
-                            '人群4预估奖励uv': crowd4_diff,
-                            '人群5预估奖励uv': crowd5_diff,
-                            '账号总开奖率': account_draw_rate_diff,
-                            '开奖率': draw_rate_diff,
-                            '更新时间': current_ext['update_time'],
-                            '状态': '成功'
-                        })
-                    else:
-                        # 结算数据
-                        results_list.append({
-                            'pid': current_data['pid'],
-                            'biz_date': current_data['biz_date'],
-                            '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
-                            '奖励金额': reward_amount_diff,
-                            '人群1结算奖励uv': crowd1_diff,
-                            '人群2结算奖励uv': crowd2_diff,
-                            '人群3结算奖励uv': crowd3_diff,
-                            '人群4结算奖励uv': crowd4_diff,
-                            '人群5结算奖励uv': crowd5_diff,
-                            '账号总开奖率': account_draw_rate_diff,
-                            '开奖率': draw_rate_diff,
-                            '更新时间': current_ext['update_time'],
-                            '状态': '成功'
-                        })
+                    elif event_id == '3718079':
+                        # 超级红包活动
+                        settlement_reward_uv_diff = safe_subtract(
+                            current_ext.get('settlement_reward_uv', ''),
+                            previous_ext.get('settlement_reward_uv', '') if previous_data else 0
+                        )
+                        if settlement_reward_uv_diff == 0:
+                            settlement_reward_uv_diff = current_ext.get('settlement_reward_uv', 0)
+                        if union_30d_lx_uv_diff == 0:
+                            union_30d_lx_uv_diff = current_data.get('union_30d_lx_uv', 0)
+                        
+                        if query_type == 1:
+                            results_list.append({
+                                'pid': current_data['pid'],
+                                'biz_date': current_data['biz_date'],
+                                '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                                '用户质量等级': current_ext.get('user_quality_level', ''),
+                                '预估奖励uv': settlement_reward_uv_diff,
+                                '账号总开奖率': current_ext.get('account_draw_rate', 0),
+                                '开奖率': current_ext.get('draw_rate', 0),
+                                '更新时间': current_ext.get('update_time', ''),
+                                '状态': '成功'
+                            })
+                        else:
+                            results_list.append({
+                                'pid': current_data['pid'],
+                                'biz_date': current_data['biz_date'],
+                                '符合奖励要求的累计用户数': union_30d_lx_uv_diff,
+                                '用户质量等级': current_ext.get('user_quality_level', ''),
+                                '结算奖励uv': settlement_reward_uv_diff,
+                                '账号总开奖率': current_ext.get('account_draw_rate', 0),
+                                '开奖率': current_ext.get('draw_rate', 0),
+                                '更新时间': current_ext.get('update_time', ''),
+                                '状态': '成功'
+                            })
+                    
                     success_count += 1
                 else:
                     # 无数据
+                    if event_id == '3654363':
+                        # 福利购活动
+                        if query_type == 1:
+                            results_list.append({
+                                'pid': pid,
+                                'biz_date': biz_date,
+                                '符合奖励要求的累计用户数': 'No data',
+                                '奖励金额': '',
+                                '人群1预估奖励uv': '',
+                                '人群2预估奖励uv': '',
+                                '人群3预估奖励uv': '',
+                                '人群4预估奖励uv': '',
+                                '人群5预估奖励uv': '',
+                                '账号总开奖率': '',
+                                '开奖率': '',
+                                '更新时间': '',
+                                '状态': '无数据'
+                            })
+                        else:
+                            results_list.append({
+                                'pid': pid,
+                                'biz_date': biz_date,
+                                '符合奖励要求的累计用户数': 'No data',
+                                '奖励金额': '',
+                                '人群1结算奖励uv': '',
+                                '人群2结算奖励uv': '',
+                                '人群3结算奖励uv': '',
+                                '人群4结算奖励uv': '',
+                                '人群5结算奖励uv': '',
+                                '账号总开奖率': '',
+                                '开奖率': '',
+                                '更新时间': '',
+                                '状态': '无数据'
+                            })
+                    elif event_id == '3718079':
+                        # 超级红包活动
+                        if query_type == 1:
+                            results_list.append({
+                                'pid': pid,
+                                'biz_date': biz_date,
+                                '符合奖励要求的累计用户数': 'No data',
+                                '奖励金额': '',
+                                '用户质量等级': '',
+                                '预估奖励uv': '',
+                                '账号总开奖率': '',
+                                '开奖率': '',
+                                '更新时间': '',
+                                '状态': '无数据'
+                            })
+                        else:
+                            results_list.append({
+                                'pid': pid,
+                                'biz_date': biz_date,
+                                '符合奖励要求的累计用户数': 'No data',
+                                '奖励金额': '',
+                                '用户质量等级': '',
+                                '结算奖励uv': '',
+                                '账号总开奖率': '',
+                                '开奖率': '',
+                                '更新时间': '',
+                                '状态': '无数据'
+                            })
+                    fail_count += 1
+                    
+            except Exception as e:
+                # 查询失败
+                print(f"Web Service: 查询pid {pid} 失败: {e}")
+                if event_id == '3654363':
+                    # 福利购活动
                     if query_type == 1:
                         results_list.append({
                             'pid': pid,
                             'biz_date': biz_date,
-                            '符合奖励要求的累计用户数': 'No data',
+                            '符合奖励要求的累计用户数': f'Error: {str(e)}',
                             '奖励金额': '',
                             '人群1预估奖励uv': '',
                             '人群2预估奖励uv': '',
@@ -761,13 +851,13 @@ def get_taobao_activity_report():
                             '账号总开奖率': '',
                             '开奖率': '',
                             '更新时间': '',
-                            '状态': '无数据'
+                            '状态': '失败'
                         })
                     else:
                         results_list.append({
                             'pid': pid,
                             'biz_date': biz_date,
-                            '符合奖励要求的累计用户数': 'No data',
+                            '符合奖励要求的累计用户数': f'Error: {str(e)}',
                             '奖励金额': '',
                             '人群1结算奖励uv': '',
                             '人群2结算奖励uv': '',
@@ -777,45 +867,36 @@ def get_taobao_activity_report():
                             '账号总开奖率': '',
                             '开奖率': '',
                             '更新时间': '',
-                            '状态': '无数据'
+                            '状态': '失败'
                         })
-                    fail_count += 1
-                    
-            except Exception as e:
-                # 查询失败
-                print(f"Web Service: 查询pid {pid} 失败: {e}")
-                if query_type == 1:
-                    results_list.append({
-                        'pid': pid,
-                        'biz_date': biz_date,
-                        '符合奖励要求的累计用户数': f'Error: {str(e)}',
-                        '奖励金额': '',
-                        '人群1预估奖励uv': '',
-                        '人群2预估奖励uv': '',
-                        '人群3预估奖励uv': '',
-                        '人群4预估奖励uv': '',
-                        '人群5预估奖励uv': '',
-                        '账号总开奖率': '',
-                        '开奖率': '',
-                        '更新时间': '',
-                        '状态': '失败'
-                    })
-                else:
-                    results_list.append({
-                        'pid': pid,
-                        'biz_date': biz_date,
-                        '符合奖励要求的累计用户数': f'Error: {str(e)}',
-                        '奖励金额': '',
-                        '人群1结算奖励uv': '',
-                        '人群2结算奖励uv': '',
-                        '人群3结算奖励uv': '',
-                        '人群4结算奖励uv': '',
-                        '人群5结算奖励uv': '',
-                        '账号总开奖率': '',
-                        '开奖率': '',
-                        '更新时间': '',
-                        '状态': '失败'
-                    })
+                elif event_id == '3718079':
+                    # 超级红包活动
+                    if query_type == 1:
+                        results_list.append({
+                            'pid': pid,
+                            'biz_date': biz_date,
+                            '符合奖励要求的累计用户数': f'Error: {str(e)}',
+                            '奖励金额': '',
+                            '用户质量等级': '',
+                            '预估奖励uv': '',
+                            '账号总开奖率': '',
+                            '开奖率': '',
+                            '更新时间': '',
+                            '状态': '失败'
+                        })  
+                    else:
+                        results_list.append({
+                            'pid': pid,
+                            'biz_date': biz_date,
+                            '符合奖励要求的累计用户数': f'Error: {str(e)}',
+                            '奖励金额': '',
+                            '用户质量等级': '',
+                            '结算奖励uv': '',
+                            '账号总开奖率': '',
+                            '开奖率': '',
+                            '更新时间': '',
+                            '状态': '失败'
+                        })
                 fail_count += 1
         
         print("Web Service: 查询完成，生成Excel...")
