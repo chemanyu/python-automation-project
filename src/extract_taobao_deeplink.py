@@ -77,8 +77,25 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
             deeplink_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'taobao://') or starts-with(@href, 'tbopen://')]")
             if deeplink_elements:
                 deeplink = deeplink_elements[0].get_attribute("href")
-                #print(f"在 <a> 标签中找到的 deeplink: {deeplink}")
-                return deeplink, process_deeplink(deeplink, platform, short_url)
+                if short_url:
+                    try:
+                        # 解析 deeplink 中的 URL 参数
+                        parsed = urlparse(deeplink)
+                        params = parse_qs(parsed.query)
+                        
+                        # 将 short_url 进行 URL 编码后替换 h5Url 参数
+                        params['h5Url'] = [short_url]
+                        
+                        # 重新构建 query string
+                        from urllib.parse import urlencode
+                        new_query = urlencode(params, doseq=True)
+                        
+                        # 重新构建完整的 deeplink
+                        deeplink = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
+                        print(f"替换 h5Url 后的 Deeplink: {deeplink}")
+                    except Exception as e:
+                        print(f"替换 h5Url 时出错: {e}，使用原始 Deeplink")
+                return deeplink, process_deeplink(deeplink, platform)
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
@@ -95,7 +112,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
     # 如果未找到 Deeplink，返回 None, None (两个值)
     return None, None
 
-def process_deeplink(deeplink, platform, short_url=None):
+def process_deeplink(deeplink, platform):
     """
     根据平台处理 Deeplink。
     如果提供了 short_url，则替换 deeplink 中的 h5Url 参数为 short_url 的 URL 编码值。
@@ -105,24 +122,6 @@ def process_deeplink(deeplink, platform, short_url=None):
     # print(f"处理 Deeplink: {deeplink}，平台: {platform}")
     
     # 如果提供了 short_url，替换 deeplink 中的 h5Url 参数
-    if short_url:
-        try:
-            # 解析 deeplink 中的 URL 参数
-            parsed = urlparse(deeplink)
-            params = parse_qs(parsed.query)
-            
-            # 将 short_url 进行 URL 编码后替换 h5Url 参数
-            params['h5Url'] = [short_url]
-            
-            # 重新构建 query string
-            from urllib.parse import urlencode
-            new_query = urlencode(params, doseq=True)
-            
-            # 重新构建完整的 deeplink
-            deeplink = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
-            print(f"替换 h5Url 后的 Deeplink: {deeplink}")
-        except Exception as e:
-            print(f"替换 h5Url 时出错: {e}，使用原始 Deeplink")
     
     if platform.lower() == "ios":
         # 对提取到的 Deeplink 进行 URL 编码并拼接
