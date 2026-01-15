@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 # 配置 ChromeDriver 路径
 #CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver"
-CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe"
+CHROME_DRIVER_PATH = "D:\\144\\chromedriver-win64\\chromedriver.exe"
 
 def get_xianyu_deeplink(short_url, driver=None, platform="android"):
     """
