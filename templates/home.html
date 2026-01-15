@@ -444,6 +444,15 @@
             <h2 style="color: #667eea; margin-bottom: 20px;">淘宝客活动短链批量获取</h2>
             <p style="color: #666; margin-bottom: 20px;">上传包含推广位（sub_pid）的文件，批量获取活动短链</p>
             
+            <!-- 活动素材ID配置 -->
+            <div class="form-group">
+                <label for="activity-material-id">活动素材ID：</label>
+                <input type="text" id="activity-material-id" placeholder="例如: 20150318020010092" value="20150318020010092">
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">
+                    活动素材ID，默认为福利购活动素材ID
+                </p>
+            </div>
+            
             <!-- 批量链接提取 -->
             <div class="form-group">
                 <label for="activity-file-input">上传文件（.txt）：</label>
@@ -855,14 +864,21 @@ mm_874030133_3340450211_116193900323
         // 淘宝客活动短链批量提取
         async function extractActivityBatch() {
             const fileInput = document.getElementById('activity-file-input');
+            const materialId = document.getElementById('activity-material-id').value.trim();
             
             if (!fileInput.files.length) {
                 alert('请选择文件');
                 return;
             }
             
+            if (!materialId) {
+                alert('请输入活动素材ID');
+                return;
+            }
+            
             const formData = new FormData();
             formData.append('link_file', fileInput.files[0]);
+            formData.append('activity_material_id', materialId);
             
             console.log('准备发送请求到: /ulink/taobao/activity/batch');
             showLoading();

@@ -338,6 +338,13 @@ def get_taobao_activity_batch():
         return "没有选择文件", 400
 
     file = request.files['link_file']
+    
+    # 获取活动素材ID参数，如果没有提供则使用默认值
+    activity_material_id = request.form.get('activity_material_id', ACTIVITY_MATERIAL_ID).strip()
+    
+    if not activity_material_id:
+        print("Web Service: 活动素材ID为空")
+        return "活动素材ID不能为空", 400
 
     if file.filename == '':
         print("Web Service: 文件名为空")
@@ -349,6 +356,7 @@ def get_taobao_activity_batch():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         print(f"Web Service: 文件已上传: {filepath}")
+        print(f"Web Service: 使用活动素材ID: {activity_material_id}")
 
         # 读取文件中的 sub_pid 列表
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -386,7 +394,7 @@ def get_taobao_activity_batch():
                 
                 # 1. 获取活动信息
                 activity_info = api.get_activity_info(
-                    activity_material_id=ACTIVITY_MATERIAL_ID,
+                    activity_material_id=activity_material_id,
                     adzone_id=adzone_id,
                     sub_pid=sub_pid
                 )

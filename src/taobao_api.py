@@ -273,9 +273,9 @@ if __name__ == '__main__':
     print("示例1: 获取活动信息")
     print("=" * 80)
     result = api.get_activity_info(
-        activity_material_id='20150318020010092',
-        adzone_id='116193900321',
-        sub_pid='mm_874030133_3340450211_116193900321'
+        activity_material_id='20150318020016140',
+        adzone_id='116193450327',
+        sub_pid='mm_874030133_3340450211_116193450327'
     )
     
     if result:
