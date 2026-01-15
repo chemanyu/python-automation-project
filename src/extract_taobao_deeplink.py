@@ -14,7 +14,7 @@ import requests # 导入 requests 包
 # 对于 Linux，常见路径是 /usr/bin/chromedriver 或 /usr/local/bin/chromedriver
 # 或者确保 chromedriver 在您的系统 PATH 环境变量中
 #CHROME_DRIVER_PATH = "/opt/homebrew/bin/chromedriver" # <-- 请确保为 Linux 更新此路径
-CHROME_DRIVER_PATH = "D:\\142\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
+CHROME_DRIVER_PATH = "D:\\144\\chromedriver-win64\\chromedriver.exe" # <-- Windows 路径示例
 
 
 # 添加一个参数 platform，表示选择的系统（安卓或 iOS）
