@@ -114,7 +114,7 @@ class TaobaoAPI:
         # 发起请求
         try:
             response = requests.get(self.api_url, params=params, timeout=10)
-            print(f"实际请求 URL: {response.url}")
+            #print(f"实际请求 URL: {response.url}")
             response.raise_for_status()
             
             result = response.json()
@@ -197,7 +197,7 @@ class TaobaoAPI:
         # 发起请求
         try:
             response = requests.get(self.api_url, params=params, timeout=10)
-            print(f"实际请求 URL: {response.url}")
+            #print(f"实际请求 URL: {response.url}")
             response.raise_for_status()
             
             result = response.json()

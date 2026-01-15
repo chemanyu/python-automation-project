@@ -99,7 +99,7 @@ def get_taobao_deeplink(short_url, driver=None, platform="ios"):
         except Exception as e:
             print(f"注意: 查找 <a> 标签中的 deeplink 时出错（或未找到）: {e}")
 
-        print("未能找到 Deeplink。", {current_url})
+        #print("未能找到 Deeplink。", {current_url})
 
     except Exception as e:
         print(f"提取deeplink过程中发生错误: {e}") # 函数内部日志保持
