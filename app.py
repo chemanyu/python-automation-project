@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from urllib.parse import unquote, parse_qs, urlparse, quote
 
 # 从 src 模块导入 deeplink 提取函数
 from src.extract_taobao_deeplink import get_taobao_deeplink, CHROME_DRIVER_PATH
@@ -439,13 +440,19 @@ def get_taobao_activity_batch():
                         try:
                             deeplink, h5_dp = get_taobao_deeplink(short_url, None, 'ios')
                             if not deeplink:
-                                deeplink = '未提取到'
+                                # 使用 short_url 构建默认的 deeplink
+                                encoded_url = quote(short_url, safe='')
+                                deeplink = "tbopen://m.taobao.com/tbopen/index.html?h5Url=" + encoded_url
                             if not h5_dp:
-                                h5_dp = '未提取到'
+                                # 使用 deeplink 构建 h5_dp
+                                encoded_deeplink = quote(deeplink, safe='')
+                                h5_dp = 'https://ace.tb.cn/t?smburl=' + encoded_deeplink
                         except Exception as e:
                             print(f"调用 get_taobao_deeplink 失败: {e}")
-                            deeplink = '提取失败'
-                            h5_dp = '提取失败'
+                            # 异常时使用 short_url 构建默认值
+                            encoded_url = quote(short_url, safe='')
+                            deeplink = "tbopen://m.taobao.com/tbopen/index.html?h5Url=" + encoded_url
+                            h5_dp = 'https://ace.tb.cn/t?smburl=' + quote(deeplink, safe='')
                         
                         return (idx, {
                             '推广位': sub_pid,
