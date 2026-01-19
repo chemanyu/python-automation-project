@@ -744,7 +744,7 @@ def get_taobao_activity_report():
                                 '状态': '成功'
                             })
                     
-                    elif event_id == '3718079':
+                    elif event_id == '4042593':
                         # 超级红包活动
                         settlement_reward_uv_diff = safe_subtract(
                             current_ext.get('settlement_reward_uv', ''),
@@ -817,7 +817,7 @@ def get_taobao_activity_report():
                                 '更新时间': '',
                                 '状态': '无数据'
                             })
-                    elif event_id == '3718079':
+                    elif event_id == '4042593':
                         # 超级红包活动
                         if query_type == 1:
                             results_list.append({
@@ -884,7 +884,7 @@ def get_taobao_activity_report():
                             '更新时间': '',
                             '状态': '失败'
                         })
-                elif event_id == '3718079':
+                elif event_id == '4042593':
                     # 超级红包活动
                     if query_type == 1:
                         results_list.append({

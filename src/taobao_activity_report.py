@@ -71,7 +71,7 @@ class TaobaoActivityReportAPI:
         获取淘宝客CPA活动报表数据
         
         Args:
-            event_id: CPA活动id，必填 (3924553-福利购, 3718079-超级红包)
+            event_id: CPA活动id，必填 (3924553-福利购, 4042593-超级红包)
             biz_date: 日期(yyyyMMdd)，必填
             query_type: 查询类型，1-推广 2-拉新，必填
             pid: 推广位id，可选
@@ -105,7 +105,7 @@ class TaobaoActivityReportAPI:
                     }
                 ]
             }
-            超级红包 (3718079):
+            超级红包 (4042593):
             {
                 'request_id': '请求ID',
                 'event_id': '活动ID',
@@ -218,7 +218,7 @@ class TaobaoActivityReportAPI:
         解析ext_info JSON字符串
         支持不同活动类型：
         - 3924553: 福利购 (预估数据和结算数据)
-        - 3718079: 超级红包 (新字段结构)
+        - 4042593: 超级红包 (新字段结构)
         
         Args:
             ext_info_str: ext_info JSON字符串
@@ -262,8 +262,8 @@ class TaobaoActivityReportAPI:
             
             return result
         
-        # 超级红包活动 (3718079)
-        elif event_id == '3718079':
+        # 超级红包活动 (4042593)
+        elif event_id == '4042593':
             result = {
                 'user_quality_level': '',
                 'account_draw_rate': 0.0,
