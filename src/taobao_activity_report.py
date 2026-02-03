@@ -71,7 +71,7 @@ class TaobaoActivityReportAPI:
         获取淘宝客CPA活动报表数据
         
         Args:
-            event_id: CPA活动id，必填 (4160349-福利购, 4042593-超级红包)
+            event_id: CPA活动id，必填 (4169349-福利购, 4042593-超级红包)
             biz_date: 日期(yyyyMMdd)，必填
             query_type: 查询类型，1-推广 2-拉新，必填
             pid: 推广位id，可选
@@ -80,7 +80,7 @@ class TaobaoActivityReportAPI:
             
         Returns:
             返回结果字典，包含报表数据列表，失败返回 None
-            福利购 (4160349):
+            福利购 (4169349):
             {
                 'request_id': '请求ID',
                 'event_id': '活动ID',
@@ -213,11 +213,11 @@ class TaobaoActivityReportAPI:
             print(f"处理响应时出错: {e}")
             return None
     
-    def _parse_ext_info(self, ext_info_str: str, event_id: str = '4160349') -> Dict:
+    def _parse_ext_info(self, ext_info_str: str, event_id: str = '4169349') -> Dict:
         """
         解析ext_info JSON字符串
         支持不同活动类型：
-        - 4160349: 福利购 (预估数据和结算数据)
+        - 4169349: 福利购 (预估数据和结算数据)
         - 4042593: 超级红包 (新字段结构)
         
         Args:
@@ -227,8 +227,8 @@ class TaobaoActivityReportAPI:
         Returns:
             解析后的字典
         """
-        # 福利购活动 (4160349)
-        if event_id == '4160349':
+        # 福利购活动 (4169349)
+        if event_id == '4169349':
             result = {
                 'crowd1_reward_uv': '',
                 'crowd2_reward_uv': '',
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     api = TaobaoActivityReportAPI(APP_KEY, APP_SECRET)
     
     # 查询参数
-    event_id = '4160349'  # CPA活动ID
+    event_id = '4169349'  # CPA活动ID
     biz_date = '20241201'  # 日期 yyyyMMdd
     query_type = 1  # 1-推广 2-拉新
     pid = 'mm_874030133_3340450211_116193900321'  # 推广位ID（可选）

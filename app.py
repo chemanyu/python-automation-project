@@ -22,7 +22,7 @@ from src.taobao_activity_report import TaobaoActivityReportAPI
 TAOBAO_APP_KEY = '35238422'
 TAOBAO_APP_SECRET = '3e2c5266e7a3689ac909659a203ce301'  # 请替换为你的 AppSecret
 ACTIVITY_MATERIAL_ID = '20150318020010092'  # 活动素材ID
-DEFAULT_EVENT_ID = '4160349'  # CPA活动ID
+DEFAULT_EVENT_ID = '4169349'  # CPA活动ID
 
 app = Flask(__name__)
 
@@ -687,7 +687,7 @@ def get_taobao_activity_report():
                     )
                     
                     # 根据活动类型处理不同的字段
-                    if event_id == '4160349':
+                    if event_id == '4169349':
                         # 福利购活动
                         crowd1_diff = safe_subtract(
                             current_ext.get('crowd1_reward_uv', ''),
@@ -783,7 +783,7 @@ def get_taobao_activity_report():
                     success_count += 1
                 else:
                     # 无数据
-                    if event_id == '4160349':
+                    if event_id == '4169349':
                         # 福利购活动
                         if query_type == 1:
                             results_list.append({
@@ -850,7 +850,7 @@ def get_taobao_activity_report():
             except Exception as e:
                 # 查询失败
                 print(f"Web Service: 查询pid {pid} 失败: {e}")
-                if event_id == '4160349':
+                if event_id == '4169349':
                     # 福利购活动
                     if query_type == 1:
                         results_list.append({
